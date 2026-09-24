@@ -6,7 +6,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
 
-# إعداد الصفحة لتناسب شاشة الآيفون والموبايل
+# إعداد الصفحة لتناسب شاشة الآيفون والموبايل والكمبيوتر
 st.set_page_config(page_title="معمل الأسنان المحترف", layout="centered", page_icon="🦷")
 
 # الاتصال بقاعدة البيانات
@@ -44,7 +44,7 @@ conn.commit()
 
 # الترقية التلقائية لحساب المدير الأول
 cursor.execute("SELECT COUNT(*) FROM users WHERE username='admin'")
-if cursor.fetchone()[0] == 0:
+if cursor.fetchone() == 0:
     cursor.execute("INSERT INTO users (username, password, role) VALUES ('admin', '1234', 'Admin')")
     conn.commit()
 
@@ -71,8 +71,7 @@ if not st.session_state['logged_in']:
         user_match = cursor.fetchone()
         if user_match:
             st.session_state['logged_in'] = True
-            # تنظيف النص المسترجع لضمان عدم حدوث حجب برمي
-            st.session_state['user_role'] = str(user_match[0]).strip()
+            st.session_state['user_role'] = str(user_match).strip()
             st.session_state['username'] = username_input
             st.success("تم التحقق بنجاح! جاري تحميل النظام...")
             st.rerun()
@@ -81,33 +80,32 @@ if not st.session_state['logged_in']:
     st.info("💡 حساب المدير الافتراضي الحالي للدخول: اسم المستخدم: admin | الباسورد: 1234")
     st.stop()
 
-# زر تسجيل الخروج والبيانات الجانبية
+# شريط جانبي لعرض معلومات المستخدم وزر تسجيل الخروج
+st.sidebar.markdown(f"**👤 المستخدم:** {st.session_state['username']}")
+st.sidebar.markdown(f"**🛡️ الصلاحية:** {st.session_state['user_role']}")
 if st.sidebar.button("🚪 تسجيل الخروج"):
     st.session_state['logged_in'] = False
     st.session_state['user_role'] = None
     st.session_state['username'] = None
     st.rerun()
 
-st.sidebar.markdown(f"**👤 المستخدم:** {st.session_state['username']}")
-st.sidebar.markdown(f"**🛡️ الصلاحية:** {st.session_state['user_role']}")
-
 st.title("🦷 نظام معمل الأسنان الذكي")
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
 cursor.execute("SELECT name FROM doctors")
-list_docs = [r[0] for r in cursor.fetchall()]
+list_docs = [r for r in cursor.fetchall()]
 
 cursor.execute("SELECT name, price FROM products")
-dict_products = {r[0]: r[1] for r in cursor.fetchall()}
+dict_products = {r: r for r in cursor.fetchall()}
 
 cursor.execute("SELECT name, default_commission FROM technicians")
-dict_techs = {r[0]: r[1] for r in cursor.fetchall()}
+dict_techs = {r: r for r in cursor.fetchall()}
 
 current_role = st.session_state['user_role']
 
 # تصفية الشاشات بالكامل وعزل صلاحيات الموظف (Staff)
 if current_role == "Staff":
-    st.info("🔒 وضع إدخال البيانات المحدود")
+    st.info("🔒 وضع إدخال البيانات المحدود للـ Staff")
     st.subheader("📋 تسجيل حالة جديدة بالمعمل")
     if not list_docs or not dict_products or not dict_techs:
         st.warning("يرجى مراجعة أدمن المعمل لتهيئة البيانات أولاً.")
@@ -136,15 +134,15 @@ total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
 try:
     cursor.execute("SELECT SUM(price) FROM cases")
     res_sales = cursor.fetchone()
-    total_sales = float(res_sales[0]) if res_sales and res_sales[0] is not None else 0.0
+    total_sales = float(res_sales) if res_sales and res_sales is not None else 0.0
 
     cursor.execute("SELECT SUM(amount_paid) FROM payments")
     res_paid = cursor.fetchone()
-    total_paid = float(res_paid[0]) if res_paid and res_paid[0] is not None else 0.0
+    total_paid = float(res_paid) if res_paid and res_paid is not None else 0.0
 
     cursor.execute("SELECT SUM(tech_commission) FROM cases")
     res_tech = cursor.fetchone()
-    total_tech_commissions = float(res_tech[0]) if res_tech and res_tech[0] is not None else 0.0
+    total_tech_commissions = float(res_tech) if res_tech and res_tech is not None else 0.0
 except Exception:
     pass
 
@@ -156,16 +154,19 @@ col2.metric("💳 ديون الأطباء", f"{remaining_debts:,.2f} ج.م")
 col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.م")
 st.markdown("---")
 
-# بناء التبويبات الموحدة في مصفوفة واحدة حرة ومفتوحة دائماً للمديرين لمنع أي حجب
+# تصميم القائمة العريضة كخيارات راديو واضحة جداً وكبيرة بدلاً من التبويبات الضيقة
+menu_options = ["📋 إدارة الحالات", "👨‍⚕️ دليل الأطباء", "🧑‍🏭 حسابات الفنيين", "⚙️ كتالوج الأسعار", "💸 تسجيل المقبوضات", "📊 التقارير والفواتير"]
 if current_role == "Admin":
-    t1, t2, t3, t4, t5, t6, t7 = st.tabs(["📋 الحالات", "👨‍⚕️ الأطباء", "🧑‍🏭 الفنيين", "⚙️ الأسعار", "💸 المقبوضات", "📊 التقارير", "👤 إضافة مستخدم جديد"])
-else:
-    t1, t2, t3, t4, t5, t6 = st.tabs(["📋 الحالات", "👨‍⚕️ الأطباء", "🧑‍🏭 الفنيين", "⚙️ الأسعار", "💸 المقبوضات", "📊 التقارير"])
+    menu_options.append("👤 إضافة مستخدم جديد")
 
-with t1:
+choice = st.radio("⬇️ اختر الشاشة المطلوبة لعرض خياراتها بالكامل:", menu_options, horizontal=True)
+
+st.markdown("---")
+
+if choice == "📋 إدارة الحالات":
     st.subheader("تسجيل حالة جديدة وتحديد الفني")
     if not list_docs or not dict_products or not dict_techs:
-        st.warning("⚠️ يرجى إضافة أطباء، تركيبات، وفنيين أولاً لتفعيل شاشة الحالات.")
+        st.warning("⚠️ يرجى إضافة أطباء، تركيبات، وفنيين أولاً لتفعيل الشاشة.")
     else:
         with st.form("case_form_admin", clear_on_submit=True):
             selected_doc = st.selectbox("اختر الطبيب", list_docs)
@@ -188,12 +189,12 @@ with t1:
                     st.success("✅ تم حفظ وفحص الطلب ماليًا بنجاح!")
                     st.rerun()
 
-with t2:
-    st.subheader("👨‍⚕️ دليل عيادات الأسنان")
+elif choice == "👨‍⚕️ دليل الأطباء":
+    st.subheader("👨‍⚕️ دليل عيادات الأسنان والعملاء")
     with st.form("doc_form", clear_on_submit=True):
         new_doc = st.text_input("اسم الطبيب الجديد")
         phone_doc = st.text_input("رقم هاتف العيادة")
-        if st.form_submit_button("إضافة الطبيب"):
+        if st.form_submit_button("إضافة الطبيب للنظام"):
             if new_doc:
                 try:
                     cursor.execute("INSERT INTO doctors (name, phone) VALUES (?, ?)", (new_doc, phone_doc))
@@ -205,13 +206,13 @@ with t2:
     df_docs = pd.read_sql_query("SELECT name as [اسم الطبيب], phone as [الهاتف] FROM doctors", conn)
     st.dataframe(df_docs, use_container_width=True)
 
-with t3:
+elif choice == "🧑‍🏭 حسابات الفنيين":
     st.subheader("🧑‍🏭 إدارة الفنيين وحساب عمولاتهم")
     with st.form("tech_form", clear_on_submit=True):
         t_name = st.text_input("اسم الفني الجديد")
         t_spec = st.text_input("التخصص")
         t_comm = st.number_input("قيمة العموله الافتراضية لكل سن (ج.م)", min_value=0.0, step=10.0)
-        if st.form_submit_button("تسجيل الفني"):
+        if st.form_submit_button("تسجيل الفني بالمعمل"):
             if t_name:
                 try:
                     cursor.execute("INSERT INTO technicians (name, specialty, default_commission) VALUES (?, ?, ?)", (t_name, t_spec, t_comm))
