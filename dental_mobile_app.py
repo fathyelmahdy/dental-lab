@@ -140,6 +140,3 @@ elif choice == "📊 التقارير والإكسيل":
             file_name='dental_lab_report.xlsx',
             mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-    else:
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
