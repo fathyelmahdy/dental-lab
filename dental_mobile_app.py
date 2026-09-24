@@ -44,7 +44,7 @@ conn.commit()
 
 # الترقية التلقائية لحساب المدير الأول
 cursor.execute("SELECT COUNT(*) FROM users WHERE username='admin'")
-if cursor.fetchone() == 0:
+if cursor.fetchone()[0] == 0:
     cursor.execute("INSERT INTO users (username, password, role) VALUES ('admin', '1234', 'Admin')")
     conn.commit()
 
@@ -78,7 +78,9 @@ if not st.session_state['logged_in']:
             user_match = cursor.fetchone()
             if user_match:
                 st.session_state['logged_in'] = True
-                st.session_state['user_role'] = str(user_match).strip()
+                # تنظيف وتأمين الصلاحية المسترجعة من الداتابيز لمنع أخطاء الحجب السحابي
+                clean_role = str(user_match[0]).strip()
+                st.session_state['user_role'] = clean_role
                 st.session_state['username'] = username_input
                 st.success("تم التحقق بنجاح! جاري تحميل النظام...")
                 st.rerun()
@@ -100,13 +102,13 @@ st.title("🦷 نظام معمل الأسنان الذكي")
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
 cursor.execute("SELECT name FROM doctors")
-list_docs = [r for r in cursor.fetchall()]
+list_docs = [r[0] for r in cursor.fetchall()]
 
 cursor.execute("SELECT name, price FROM products")
-dict_products = {r: r for r in cursor.fetchall()}
+dict_products = {r[0]: r[1] for r in cursor.fetchall()}
 
 cursor.execute("SELECT name, default_commission FROM technicians")
-dict_techs = {r: r for r in cursor.fetchall()}
+dict_techs = {r[0]: r[1] for r in cursor.fetchall()}
 
 current_role = st.session_state['user_role']
 
@@ -141,15 +143,15 @@ total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
 try:
     cursor.execute("SELECT SUM(price) FROM cases")
     res_sales = cursor.fetchone()
-    total_sales = float(res_sales) if res_sales and res_sales is not None else 0.0
+    total_sales = float(res_sales[0]) if res_sales and res_sales[0] is not None else 0.0
 
     cursor.execute("SELECT SUM(amount_paid) FROM payments")
     res_paid = cursor.fetchone()
-    total_paid = float(res_paid) if res_paid and res_paid is not None else 0.0
+    total_paid = float(res_paid[0]) if res_paid and res_paid[0] is not None else 0.0
 
     cursor.execute("SELECT SUM(tech_commission) FROM cases")
     res_tech = cursor.fetchone()
-    total_tech_commissions = float(res_tech) if res_tech and res_tech is not None else 0.0
+    total_tech_commissions = float(res_tech[0]) if res_tech and res_tech[0] is not None else 0.0
 except Exception:
     pass
 
@@ -221,6 +223,3 @@ elif choice == "doctors":
                 except sqlite3.IntegrityError:
                     st.error("هذا الطبيب مسجل مسبقاً!")
             else:
-                st.error("يرجى كتابة اسم الطبيب")
-    df_docs = pd.read_sql_query("SELECT name as [اسم الطبيب], phone as [الهاتف] FROM doctors", conn)
-    st.dataframe(df_docs, use_container_width=True)
