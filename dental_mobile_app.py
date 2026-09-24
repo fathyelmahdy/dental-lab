@@ -205,7 +205,7 @@ elif choice == "prices":
         st.dataframe(df_custom_rates, use_container_width=True)
 
 elif choice == "technicians":
-    st.subheader("🧑‍🏭 إدارة الفنيين وحساب عمولاتهم")
+    st.subheader("⚙️ إدارة الفنيين وحساب عمولاتهم")
     with st.form("tech_form_free", clear_on_submit=True):
         t_name = st.text_input("اسم الفني الجديد")
         t_spec = st.text_input("التخصص")
