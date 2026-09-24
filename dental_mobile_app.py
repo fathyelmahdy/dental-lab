@@ -191,6 +191,5 @@ elif choice == "prices":
     
     with col_custom:
         st.markdown("### 🔄 2. تعديل السعر لطبيب معين (اختياري)")
-        target_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء"])
-        target_prod = st.selectbox("اختر التركيبة", list_products if list_products else ["لا يوجد تركيبات"])
-        custom_rate = st.number_input("السعر المعدل الخاص بهذا الطبيب (ج.م)", min_value=0.0, step=50.0)
+        target_doc = st.selectbox("اختر الطبيب للخصم الخاص", list_docs if list_docs else ["لا يوجد أطباء"])
+        target_prod = st.selectbox("اختر التركيبة للخصم الخاص", list_products if list_products else ["لا يوجد تركيبات"])
