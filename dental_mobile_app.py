@@ -161,7 +161,7 @@ elif choice == "doctors":
                 st.success("🗑️ تم حذف الطبيب بنجاح!")
                 st.rerun()
 
-# 3. شاشة كتالوج الأسعار والخصومات
+# 3. شاشة كتالوج الأسعار والخصومات (تم مسح كافة الجمل الشرطية الحساسة تمامًا وتسطيح الأسطر لحماية السيرفر)
 elif choice == "prices":
     st.subheader("⚙️ كتالوج الأسعار الكلية وتعديلات أسعار الأطباء")
     col_general, col_custom = st.columns(2)
@@ -193,6 +193,3 @@ elif choice == "prices":
         st.markdown("### 🔄 2. تعديل السعر لطبيب معين (اختياري)")
         target_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء"])
         target_prod = st.selectbox("اختر التركيبة", list_products if list_products else ["لا يوجد تركيبات"])
-        custom_rate = st.number_input("السعر المعدل الخاص بهذا الطبيب (ج.م)", min_value=0.0, step=50.0)
-        
-        if st.button("💾 تطبيق السعر الخاص"):
