@@ -13,7 +13,7 @@ st.set_page_config(page_title="معمل الأسنان المحترف", layout="
 conn = sqlite3.connect('dental_lab_advanced_mobile.db', check_same_thread=False)
 cursor = conn.cursor()
 
-# إنشاء وتحديث الجداول المترابطة (تمت إضافة جدول المستخدمين users)
+# إنشاء وتحديث الجداول المترابطة
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, role TEXT
@@ -42,7 +42,7 @@ cursor.execute('''
     )''')
 conn.commit()
 
-# ترقية لقاعدة البيانات لإضافة حساب المدير الافتراضي الأول أوتوماتيكياً لو الجدول فارغ
+# الترقية التلقائية لحساب المدير الأول
 cursor.execute("SELECT COUNT(*) FROM users")
 if cursor.fetchone()[0] == 0:
     cursor.execute("INSERT INTO users (username, password, role) VALUES ('admin', '1234', 'Admin')")
@@ -55,7 +55,7 @@ try:
 except sqlite3.OperationalError:
     pass
 
-# --- نظام تسجيل الدخول الديناميكي من قاعدة البيانات ---
+# --- نظام تسجيل الدخول والصلاحيات ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['user_role'] = None
@@ -112,16 +112,16 @@ if role in ["Admin", "Accountant"]:
     total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
     try:
         cursor.execute("SELECT SUM(price) FROM cases")
-        res_sales = cursor.fetchone()[0]
-        total_sales = float(res_sales) if res_sales else 0.0
+        res_sales = cursor.fetchone()
+        total_sales = float(res_sales[0]) if res_sales[0] else 0.0
 
         cursor.execute("SELECT SUM(amount_paid) FROM payments")
-        res_paid = cursor.fetchone()[0]
-        total_paid = float(res_paid) if res_paid else 0.0
+        res_paid = cursor.fetchone()
+        total_paid = float(res_paid[0]) if res_paid[0] else 0.0
 
         cursor.execute("SELECT SUM(tech_commission) FROM cases")
-        res_tech = cursor.fetchone()[0]
-        total_tech_commissions = float(res_tech) if res_tech else 0.0
+        res_tech = cursor.fetchone()
+        total_tech_commissions = float(res_tech[0]) if res_tech[0] else 0.0
     except Exception:
         pass
     
@@ -136,7 +136,7 @@ if role in ["Admin", "Accountant"]:
     # بناء التبويبات حسب نوع الصلاحية
     tabs_list = ["📋 الحالات", "👨‍⚕️ الأطباء", "🧑‍🏭 الفنيين", "⚙️ الأسعار", "💸 المقبوضات", "📊 التقارير والفواتير"]
     if role == "Admin":
-        tabs_list.append("🔐 إدارة المستخدمين والصلاحيات")
+        tabs_list.append("🔐 إدارة المستخدمين")
         
     tabs = st.tabs(tabs_list)
     
@@ -207,7 +207,7 @@ if role in ["Admin", "Accountant"]:
         ''', conn)
         st.dataframe(df_tech_report, use_container_width=True)
 
-    # تبويب كتالوج التركيبات والأسعار
+    # تبويب الأسعار
     with tabs[3]:
         st.subheader("⚙️ قائمة أسعار خدمات المعمل")
         if role == "Admin":
@@ -224,3 +224,4 @@ if role in ["Admin", "Accountant"]:
                         except sqlite3.IntegrityError:
                             st.error("مضافة بالفعل!")
         else:
+            st.warning("🔒 تصفح فقط: تعديل الكتالوج والأسعار متاح فقط لصلاحية مدير المعمل (Admin)."
