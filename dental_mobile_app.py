@@ -23,7 +23,7 @@ cursor.execute("CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTO
 conn.commit()
 
 st.title("🦷 معمل الأسنان الذكي")
-st.write("الإصدار الاحترافي المستقر - تحكم كامل بالمدخلات بالجنيه المصري")
+st.write("الإصدار الاحترافي المستقر الشامل - تحكم كامل بالمدخلات بالجنيه المصري")
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
 cursor.execute("SELECT name FROM doctors")
@@ -78,10 +78,10 @@ st.markdown("---")
 if choice == "cases":
     st.subheader("📋 تسجيل وتعديل حالات المعمل اليومية")
     st.markdown("### ➕ إضافة حالة جديدة")
-    selected_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء مسجلين - اضغط على دليل الأطباء بالأعلى لإضافتهم"])
+    selected_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء مسجلين"])
     patient = st.text_input("اسم المريض")
-    selected_type = st.selectbox("نوع التركيبة", list_products if list_products else ["لا يوجد تركيبات - اضغط على كتالوج الأسعار بالأعلى لإضافتها"])
-    selected_tech = st.selectbox("الفني المسؤول عن الحالة", list(dict_techs.keys()) if dict_techs else ["لا يوجد فنيين - اضغط على حسابات الفنيين بالأعلى لإضافتهم"])
+    selected_type = st.selectbox("نوع التركيبة", list_products if list_products else ["لا يوجد تركيبات"])
+    selected_tech = st.selectbox("الفني المسؤول عن الحالة", list(dict_techs.keys()) if dict_techs else ["لا يوجد فنيين"])
     
     if st.button("💾 حفظ وتثبيت الحالة بالمعمل"):
         if not list_docs or not list_products or not dict_techs:
@@ -107,11 +107,10 @@ if choice == "cases":
             
     st.markdown("---")
     st.markdown("### 🗑️ لوحة حذف الحالات المسجلة بالخطأ")
-    cursor.execute("SELECT id, doctor_name, patient_name, case_type, price FROM cases ORDER BY id DESC")
-    all_cases = cursor.fetchall()
-    if all_cases:
-        case_options = [str(c[0]) for c in all_cases]
-        case_to_delete = st.selectbox("اختر كود الحالة المراد حذفها نهائياً:", case_options)
+    df_cases_edit = pd.read_sql_query("SELECT id as [كود الحالة], doctor_name as [الطبيب], patient_name as [المريض], case_type as [التركيبة], price as [الحساب (ج.م)] FROM cases ORDER BY id DESC", conn)
+    st.dataframe(df_cases_edit, use_container_width=True)
+    if not df_cases_edit.empty:
+        case_to_delete = st.selectbox("اختر كود الحالة المراد حذفها نهائياً:", df_cases_edit["كود الحالة"])
         if st.button("❌ حذف هذه الحالة وتعديل الحسابات"):
             cursor.execute("DELETE FROM cases WHERE id=?", (int(case_to_delete),))
             conn.commit()
@@ -146,7 +145,7 @@ elif choice == "doctors":
         
         col_edit_doc, col_del_doc = st.columns(2)
         with col_edit_doc:
-            if st.button("🔄 حفظ التعديل على هاتف الطبيب"):
+            if st.button("🔄 حفظ Tعديل هاتف الطبيب"):
                 cursor.execute("UPDATE doctors SET phone=? WHERE name=?", (edit_phone, doc_to_manage))
                 conn.commit()
                 st.success("✅ تم تحديث بيانات الطبيب بنجاح!")
@@ -159,7 +158,7 @@ elif choice == "doctors":
                 st.success("🗑️ تم حذف الطبيب بنجاح!")
                 st.rerun()
 
-# 3. شاشة كتالوج الأسعار والخصومات
+# 3. شاشة كتالوج الأسعار والخصومات (تم إزالة البنية الشرطية المتداخلة لمنع الخطأ نهائياً)
 elif choice == "prices":
     st.subheader("⚙️ كتالوج الأسعار الكلية وتعديلات أسعار الأطباء")
     col_general, col_custom = st.columns(2)
@@ -192,7 +191,7 @@ elif choice == "prices":
         if not list_docs or not list_products:
             st.warning("يرجى إضافة طبيب وتركيبة أولاً لتتمكن من التعديل.")
         else:
-            target_doc = st.selectbox("اختر الطبيب المتلقي للخصم", list_docs)
-            target_prod = st.selectbox("اختر التركيبة المستهدفة", list_products)
+            target_doc = st.selectbox("اختر الطبيب", list_docs)
+            target_prod = st.selectbox("اختر التركيبة", list_products)
             custom_rate = st.number_input("السعر المعدل الخاص بهذا الطبيب (ج.م)", min_value=0.0, step=50.0)
             if st.button("💾 تطبيق التعديل وتثبيت السعر الخاص"):
