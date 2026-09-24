@@ -63,23 +63,21 @@ if 'logged_in' not in st.session_state:
 
 if not st.session_state['logged_in']:
     st.title("🔒 تسجيل الدخول - نظام المعمل")
-    
     username_input = st.text_input("اسم المستخدم").strip()
     password_input = st.text_input("كلمة المرور", type="password").strip()
     
     if st.button("دخول للنظام"):
         cursor.execute("SELECT role FROM users WHERE username=? AND password=?", (username_input, password_input))
         user_match = cursor.fetchone()
-        
         if user_match:
             st.session_state['logged_in'] = True
-            st.session_state['user_role'] = str(user_match[0]).strip() # استخراج النص الصريح للصلاحية
+            st.session_state['user_role'] = str(user_match[0]).strip()
             st.session_state['username'] = username_input
             st.success("تم التحقق بنجاح! جاري تحميل النظام...")
             st.rerun()
         else:
             st.error("⚠️ اسم المستخدم أو كلمة المرور غير صحيحة!")
-    st.info("💡 حساب المدير الافتراضي الأول للدخول: اسم المستخدم: admin | الباسورد: 1234")
+    st.info("💡 حساب المدير الافتراضي: admin | الباسورد: 1234")
     st.stop()
 
 # زر تسجيل الخروج والبيانات الجانبية
@@ -104,7 +102,6 @@ dict_products = {r[0]: r[1] for r in cursor.fetchall()}
 cursor.execute("SELECT name, default_commission FROM technicians")
 dict_techs = {r[0]: r[1] for r in cursor.fetchall()}
 
-# --- تقسيم الصلاحيات والشاشات بناءً على صلاحية المستخدم المسجل ---
 role = st.session_state['user_role']
 
 if role in ["Admin", "Accountant"]:
@@ -133,13 +130,12 @@ if role in ["Admin", "Accountant"]:
     col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.م")
     st.markdown("---")
 
-    # بناء التبويبات الموحدة في سطر واحد لمنع أخطاء الـ Indentation
+    # بناء التبويبات الموحدة في سطر واحد
     if role == "Admin":
         t1, t2, t3, t4, t5, t6, t7 = st.tabs(["📋 الحالات", "👨‍⚕️ الأطباء", "🧑‍🏭 الفنيين", "⚙️ الأسعار", "💸 المقبوضات", "📊 التقارير", "🔐 المستخدمين"])
     else:
         t1, t2, t3, t4, t5, t6 = st.tabs(["📋 الحالات", "👨‍⚕️ الأطباء", "🧑‍🏭 الفنيين", "⚙️ الأسعار", "💸 المقبوضات", "📊 التقارير"])
         
-    # تبويب الحالات
     with t1:
         st.subheader("تسجيل حالة جديدة وتحديد الفني")
         if not list_docs or not dict_products or not dict_techs:
@@ -166,7 +162,6 @@ if role in ["Admin", "Accountant"]:
                         st.success("✅ تم حفظ وفحص الطلب ماليًا بنجاح!")
                         st.rerun()
 
-    # تبويب الأطباء
     with t2:
         st.subheader("👨‍⚕️ دليل عيادات الأسنان")
         with st.form("doc_form", clear_on_submit=True):
@@ -184,7 +179,6 @@ if role in ["Admin", "Accountant"]:
         df_docs = pd.read_sql_query("SELECT name as [اسم الطبيب], phone as [الهاتف] FROM doctors", conn)
         st.dataframe(df_docs, use_container_width=True)
 
-    # تبويب الفنيين
     with t3:
         st.subheader("🧑‍🏭 إدارة الفنيين وحساب عمولاتهم")
         with st.form("tech_form", clear_on_submit=True):
@@ -206,7 +200,6 @@ if role in ["Admin", "Accountant"]:
         ''', conn)
         st.dataframe(df_tech_report, use_container_width=True)
 
-    # تبويب الأسعار
     with t4:
         st.subheader("⚙️ قائمة أسعار خدمات المعمل")
         if role == "Admin":
@@ -221,3 +214,6 @@ if role in ["Admin", "Accountant"]:
                             st.success("✅ تم التحديث الافتراضي بقائمة الأسعار!")
                             st.rerun()
                         except sqlite3.IntegrityError:
+                            st.error("مضافة بالفعل!")
+        else:
+            st.warning("🔒 تصفح فقط: تعديل الكتالوج متاح لمدير المعمل (Admin).")
