@@ -44,7 +44,7 @@ cursor.execute('''
     )''')
 conn.commit()
 
-# --- ترقية تلقائية وذكية لقاعدة البيانات لمنع خطأ الـ OperationalError الشاش بالأعلى ---
+# ترقية تلقائية وذكية لقاعدة البيانات لمنع أخطاء الـ OperationalError
 try:
     cursor.execute("ALTER TABLE cases ADD COLUMN tech_name TEXT")
     cursor.execute("ALTER TABLE cases ADD COLUMN tech_commission REAL DEFAULT 0.0")
@@ -58,7 +58,7 @@ try:
 except sqlite3.OperationalError:
     pass
 
-st.title("🦷 system معمل الأسنان الذكي")
+st.title("🦷 معمل الأسنان الذكي")
 st.write("الإصدار المفتوح الشامل - مبيعات وعمولات وفواتير بالجنيه المصري")
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
@@ -96,7 +96,6 @@ col2.metric("💳 ديون الأطباء", f"{remaining_debts:,.2f} ج.م")
 col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.م")
 st.markdown("---")
 
-# تصميم الأزرار العريضة للتنقل الفوري والسلس
 menu_options = ["cases", "doctors", "prices", "technicians", "payments", "reports"]
 
 choice_display = {
@@ -111,7 +110,6 @@ choice_display = {
 choice = st.radio("⬇️ اختر الشاشة المطلوبة لعرض خياراتها بالكامل:", menu_options, format_func=lambda x: choice_display[x], horizontal=True)
 st.markdown("---")
 
-# 1. شاشة إدارة الحالات
 if choice == "cases":
     st.subheader("تسجيل حالة جديدة بالمعمل")
     with st.form("case_form_free", clear_on_submit=True):
@@ -124,14 +122,12 @@ if choice == "cases":
             if not list_docs or not list_products or not dict_techs:
                 st.error("⚠️ خطأ: لا يمكنك الحفظ قبل تهيئة الأطباء والتركيبات والفنيين أولاً!")
             elif patient:
-                # 1. جلب السعر الخاص بالطبيب أولاً إذا وُجِد
                 cursor.execute("SELECT custom_price FROM doctor_prices WHERE doctor_name=? AND product_name=?", (selected_doc, selected_type))
                 price_match = cursor.fetchone()
                 
                 if price_match and price_match[0] is not None:
                     final_price = float(price_match[0])
                 else:
-                    # 2. إذا لم يوجد سعر خاص، يتم جلب السعر الكلي العام
                     cursor.execute("SELECT general_price FROM products WHERE name=?", (selected_type,))
                     general_match = cursor.fetchone()
                     final_price = float(general_match[0]) if general_match and general_match[0] is not None else 0.0
@@ -146,7 +142,6 @@ if choice == "cases":
             else:
                 st.error("يرجى كتابة اسم المريض")
 
-# 2. شاشة دليل الأطباء
 elif choice == "doctors":
     st.subheader("👨‍⚕️ دليل عيادات الأسنان والعملاء")
     with st.form("doc_form_free", clear_on_submit=True):
@@ -166,7 +161,6 @@ elif choice == "doctors":
     df_docs = pd.read_sql_query("SELECT name as [اسم الطبيب], phone as [الهاتف] FROM doctors", conn)
     st.dataframe(df_docs, use_container_width=True)
 
-# 3. شاشة كتالوج الأسعار العامة والخصومات المخصصة للأطباء
 elif choice == "prices":
     st.subheader("⚙️ كتالوج الأسعار الكلية وتعديلات أسعار الأطباء")
     col_general, col_custom = st.columns(2)
@@ -210,5 +204,9 @@ elif choice == "prices":
         df_custom_rates = pd.read_sql_query("SELECT doctor_name as [الطبيب], product_name as [التركيبة], custom_price as [السعر المعدل (ج.م)] FROM doctor_prices", conn)
         st.dataframe(df_custom_rates, use_container_width=True)
 
-# 4. شاشة حسابات الفنيين
 elif choice == "technicians":
+    st.subheader("🧑‍🏭 إدارة الفنيين وحساب عمولاتهم")
+    with st.form("tech_form_free", clear_on_submit=True):
+        t_name = st.text_input("اسم الفني الجديد")
+        t_spec = st.text_input("التخصص")
+        t_comm = st.number_input("قيمة العموله الافتراضية لكل سن (ج.م)", min_value=0.0, step=10.0)
