@@ -1,6 +1,4 @@
-import streamlit as st
-import pandas as pd
-import sqlite3
+
 import io
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -44,7 +42,7 @@ conn.commit()
 
 # الترقية التلقائية لحساب المدير الأول
 cursor.execute("SELECT COUNT(*) FROM users WHERE username='admin'")
-if cursor.fetchone() == 0:
+if cursor.fetchone()[0] == 0:
     cursor.execute("INSERT INTO users (username, password, role) VALUES ('admin', '1234', 'Admin')")
     conn.commit()
 
@@ -78,7 +76,7 @@ if not st.session_state['logged_in']:
             user_match = cursor.fetchone()
             if user_match:
                 st.session_state['logged_in'] = True
-                st.session_state['user_role'] = str(user_match).strip()
+                st.session_state['user_role'] = str(user_match[0]).strip()
                 st.session_state['username'] = username_input
                 st.success("تم التحقق بنجاح! جاري تحميل النظام...")
                 st.rerun()
@@ -100,13 +98,13 @@ st.title("🦷 نظام معمل الأسنان الذكي")
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
 cursor.execute("SELECT name FROM doctors")
-list_docs = [r for r in cursor.fetchall()]
+list_docs = [r[0] for r in cursor.fetchall()]
 
 cursor.execute("SELECT name, price FROM products")
-dict_products = {r: r for r in cursor.fetchall()}
+dict_products = {r[0]: r[1] for r in cursor.fetchall()}
 
 cursor.execute("SELECT name, default_commission FROM technicians")
-dict_techs = {r: r for r in cursor.fetchall()}
+dict_techs = {r[0]: r[1] for r in cursor.fetchall()}
 
 current_role = st.session_state['user_role']
 
@@ -141,15 +139,15 @@ total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
 try:
     cursor.execute("SELECT SUM(price) FROM cases")
     res_sales = cursor.fetchone()
-    total_sales = float(res_sales) if res_sales and res_sales is not None else 0.0
+    total_sales = float(res_sales[0]) if res_sales and res_sales[0] is not None else 0.0
 
     cursor.execute("SELECT SUM(amount_paid) FROM payments")
     res_paid = cursor.fetchone()
-    total_paid = float(res_paid) if res_paid and res_paid is not None else 0.0
+    total_paid = float(res_paid[0]) if res_paid and res_paid[0] is not None else 0.0
 
     cursor.execute("SELECT SUM(tech_commission) FROM cases")
     res_tech = cursor.fetchone()
-    total_tech_commissions = float(res_tech) if res_tech and res_tech is not None else 0.0
+    total_tech_commissions = float(res_tech[0]) if res_tech and res_tech[0] is not None else 0.0
 except Exception:
     pass
 
@@ -161,12 +159,12 @@ col2.metric("💳 ديون الأطباء", f"{remaining_debts:,.2f} ج.م")
 col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.م")
 st.markdown("---")
 
-# استخدام نصوص صافية تماماً بدون رموز تعبيرية لمنع أي مشكلة في السيرفر
+# خيارات التنقل الصافية تماماً بدون إيموجي لحل مشاكل التفسير السحابي
 menu_options = ["cases", "doctors", "technicians", "prices", "payments", "reports"]
 if current_role == "Admin":
     menu_options.append("users")
 
-# عرض قائمة اختيار عريضة ومفهومة للمخدم
+# عرض أسماء القوائم المترجمة بشكل عريض ومقروء للمستخدم
 choice_display = {
     "cases": "📋 إدارة الحالات",
     "doctors": "👨‍⚕️ دليل الأطباء",
@@ -182,16 +180,14 @@ st.markdown("---")
 
 if choice == "cases":
     st.subheader("تسجيل حالة جديدة وتحديد الفني")
-    # تم فتح الشاشة بشكل حر تماماً، وإذا كانت القوائم فارغة نبه المستخدم بضرورة ملء التبويبات الأخرى
     with st.form("case_form_admin", clear_on_submit=True):
-        selected_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء مسجلين - اضغط على دليل الأطباء بالاعلى لإضافتهم"])
+        selected_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء مسجلين - اضغط على دليل الأطباء بالأعلى لإضافتهم"])
         patient = st.text_input("اسم المريض")
-        selected_type = st.selectbox("نوع التركيبة", list(dict_products.keys()) if dict_products else ["لا يوجد تركيبات - اضغط على كتالوج الأسعار بالاعلى لإضافتها"])
-        selected_tech = st.selectbox("الفني المسؤول عن الحالة", list(dict_techs.keys()) if dict_techs else ["لا يوجد فنيين - اضغط على حسابات الفنيين بالاعلى لإضافتهم"])
+        selected_type = st.selectbox("نوع التركيبة", list(dict_products.keys()) if dict_products else ["لا يوجد تركيبات - اضغط على كتالوج الأسعار بالأعلى لإضافتها"])
+        selected_tech = st.selectbox("الفني المسؤول عن الحالة", list(dict_techs.keys()) if dict_techs else ["لا يوجد فنيين - اضغط على حسابات الفنيين بالأعلى لإضافتهم"])
         
-        # حساب السعر التلقائي إذا كانت البيانات متوفرة
-        suggested_price = dict_products.get(selected_type, 0.0) if dict_products and selected_type in dict_products else 0.0
-        suggested_comm = dict_techs.get(selected_tech, 0.0) if dict_techs and selected_tech in dict_techs else 0.0
+        suggested_price = dict_products.get(selected_type, 0.0)
+        suggested_comm = dict_techs.get(selected_tech, 0.0)
         
         st.info(f"💵 السعر الافتراضي: {suggested_price:,.2f} ج.م | 🛠️ عمولة الفني: {suggested_comm:,.2f} ج.م")
         
@@ -212,7 +208,6 @@ if choice == "cases":
 
 elif choice == "doctors":
     st.subheader("👨‍⚕️ دليل عيادات الأسنان والعملاء")
-    # شاشة حرة تماماً ومفتوحة دائماً للكتابة والتعديل
     with st.form("doc_form", clear_on_submit=True):
         new_doc = st.text_input("اسم الطبيب الجديد")
         phone_doc = st.text_input("رقم هاتف العيادة")
@@ -220,3 +215,8 @@ elif choice == "doctors":
             if new_doc:
                 try:
                     cursor.execute("INSERT INTO doctors (name, phone) VALUES (?, ?)", (new_doc, phone_doc))
+                    conn.commit()
+                    st.success("🎉 تم تسجيل الطبيب بنجاح!")
+                    st.rerun()
+                except sqlite3.IntegrityError:
+                    st.error("هذا الطبيب مسجل مسبقاً!")
