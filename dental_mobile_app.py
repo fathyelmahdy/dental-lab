@@ -130,7 +130,7 @@ if role == "Staff":
     conn.close()
     st.stop()
 
-# --- بقية الواجهات الخاصة بـ (Admin و Accountant) بدون أي تداخل برمجي ---
+# --- بقية الواجهات الخاصة بـ (Admin و Accountant) ---
 total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
 try:
     cursor.execute("SELECT SUM(price) FROM cases")
@@ -155,9 +155,9 @@ col2.metric("💳 ديون الأطباء", f"{remaining_debts:,.2f} ج.م")
 col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.م")
 st.markdown("---")
 
-# بناء التبويبات المفتوحة للمسؤولين
+# بناء التبويبات الموحدة في سطر واحد
 if role == "Admin":
-    t1, t2, t3, t4, t5, t6, t7 = st.tabs(["📋 الحالات", "👨‍⚕️ الأطباء", "🧑‍🏭 الفنيين", "⚙️ الأسعار", "💸 المقبوضات", "📊 التقارير", "🔐 إدارة المستخدمين"])
+    t1, t2, t3, t4, t5, t6, t7 = st.tabs(["📋 الحالات", "👨‍⚕️ الأطباء", "🧑‍🏭 الفنيين", "⚙️ الأسعار", "💸 المقبوضات", "📊 التقارير", "🔐 المستخدمين"])
 else:
     t1, t2, t3, t4, t5, t6 = st.tabs(["📋 الحالات", "👨‍⚕️ الأطباء", "🧑‍🏭 الفنيين", "⚙️ الأسعار", "💸 المقبوضات", "📊 التقارير"])
 
@@ -219,5 +219,4 @@ with t3:
                     st.rerun()
                 except sqlite3.IntegrityError:
                     st.error("هذا الفني مسجل مسبقاً!")
-    df_tech_report = pd.read_sql_query('''
-        SELECT tech_name as [اسم الفني], COUNT(id) as [عدد الحالات], SUM(tech_commission) as [إجمالي المستحقات (ج.م)] 
+    df_tech_report = pd.read_sql_query("SELECT tech_name as [اسم الفني], COUNT(id) as [عدد الحالات], SUM(tech_commission) as [إجمالي المستحقات (ج.م)] FROM cases WHERE tech_name IS NOT NULL GROUP BY tech_name", conn)
