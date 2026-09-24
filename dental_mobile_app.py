@@ -13,14 +13,14 @@ st.set_page_config(page_title="معمل الأسنان المحترف", layout="
 conn = sqlite3.connect('dental_lab_advanced_mobile.db', check_same_thread=False)
 cursor = conn.cursor()
 
-# إنشاء وتحديث الجداول المترابطة لتشمل نظام الأسعار المخصصة للأطباء
+# إنشاء وتحديث الجداول المترابطة (جدول المنتجات يشمل السعر العام وجدول منفصل للأسعار الخاصة)
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS doctors (
         id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, phone TEXT
     )''')
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS products (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE
+        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, general_price REAL DEFAULT 0.0
     )''')
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS doctor_prices (
@@ -45,7 +45,7 @@ cursor.execute('''
 conn.commit()
 
 st.title("🦷 نظام معمل الأسنان الذكي")
-st.write("إصدار الأسعار المخصصة لكل طبيب بالجنيه المصري")
+st.write("إصدار الأسعار الكلية والتعديلات المخصصة للأطباء")
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة
 cursor.execute("SELECT name FROM doctors")
@@ -88,7 +88,7 @@ menu_options = ["cases", "doctors", "prices", "technicians", "payments", "report
 choice_display = {
     "cases": "📋 إدارة الحالات",
     "doctors": "👨‍⚕️ دليل الأطباء",
-    "prices": "⚙️ أسعار التركيبات المخصصة",
+    "prices": "⚙️ كتالوج الأسعار والخصومات",
     "technicians": "🧑‍🏭 حسابات الفنيين",
     "payments": "💸 تسجيل المقبوضات",
     "reports": "📊 التقارير والفواتير"
@@ -99,32 +99,36 @@ st.markdown("---")
 
 # 1. شاشة إدارة الحالات (تسجيل الحالات السريع)
 if choice == "cases":
-    st.subheader("تسجيل حالة جديدة (يتم احتساب السعر الخاص بالطبيب تلقائياً)")
+    st.subheader("تسجيل حالة جديدة بالمعمل")
     with st.form("case_form_free", clear_on_submit=True):
-        selected_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء مسجلين - اضغط على دليل الأطباء بالأعلى لإضافتهم"])
+        selected_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء مسجلين - اضغط على دليل الأطباء لإضافتهم"])
         patient = st.text_input("اسم المريض")
-        selected_type = st.selectbox("نوع التركيبة", list_products if list_products else ["لا يوجد تركيبات - اضغط على أسعار التركيبات المخصصة بالأعلى لإضافتها"])
-        selected_tech = st.selectbox("الفني المسؤول عن الحالة", list(dict_techs.keys()) if dict_techs else ["لا يوجد فنيين - اضغط على حسابات الفنيين بالأعلى لإضافتهم"])
+        selected_type = st.selectbox("نوع التركيبة", list_products if list_products else ["لا يوجد تركيبات - اضغط على كتالوج الأسعار لإضافتها"])
+        selected_tech = st.selectbox("الفني المسؤول عن الحالة", list(dict_techs.keys()) if dict_techs else ["لا يوجد فنيين - اضغط على حسابات الفنيين لإضافتهم"])
         
         if st.form_submit_button("حفظ وتثبيت الحالة"):
             if not list_docs or not list_products or not dict_techs:
                 st.error("⚠️ خطأ: لا يمكنك الحفظ قبل تهيئة الأطباء والتركيبات والفنيين أولاً!")
             elif patient:
-                # جلب السعر المخصص لهذا الطبيب بالتحديد لهذه التركيبة
+                # 1. جلب السعر الخاص بالطبيب أولاً إذا وُجِد
                 cursor.execute("SELECT custom_price FROM doctor_prices WHERE doctor_name=? AND product_name=?", (selected_doc, selected_type))
                 price_match = cursor.fetchone()
                 
-                if price_match:
+                if price_match and price_match[0] is not None:
                     final_price = float(price_match[0])
-                    suggested_comm = dict_techs.get(selected_tech, 0.0)
-                    
-                    cursor.execute("INSERT INTO cases (doctor_name, patient_name, case_type, price, tech_name, tech_commission) VALUES (?, ?, ?, ?, ?, ?)",
-                                   (selected_doc, patient, selected_type, final_price, selected_tech, suggested_comm))
-                    conn.commit()
-                    st.success(f"✅ تم قيد الحالة بنجاح وبسعر مخصص للطبيب: {final_price:,.2f} ج.م")
-                    st.rerun()
                 else:
-                    st.error(f"⚠️ خطأ: لم تقم بتحديد سعر لتركيبة ({selected_type}) لهذا الطبيب ({selected_doc}) بعد! برجاء الذهاب لتبويب 'أسعار التركيبات المخصصة' وتحديد سعره أولاً.")
+                    # 2. إذا لم يوجد سعر خاص، يتم جلب السعر الكلي العام لكل الناس
+                    cursor.execute("SELECT general_price FROM products WHERE name=?", (selected_type,))
+                    general_match = cursor.fetchone()
+                    final_price = float(general_match[0]) if general_match else 0.0
+                
+                suggested_comm = dict_techs.get(selected_tech, 0.0)
+                
+                cursor.execute("INSERT INTO cases (doctor_name, patient_name, case_type, price, tech_name, tech_commission) VALUES (?, ?, ?, ?, ?, ?)",
+                               (selected_doc, patient, selected_type, final_price, selected_tech, suggested_comm))
+                conn.commit()
+                st.success(f"✅ تم قيد الحالة بنجاح وبسعر: {final_price:,.2f} ج.م")
+                st.rerun()
             else:
                 st.error("يرجى كتابة اسم المريض")
 
@@ -139,7 +143,7 @@ elif choice == "doctors":
                 try:
                     cursor.execute("INSERT INTO doctors (name, phone) VALUES (?, ?)", (new_doc, phone_doc))
                     conn.commit()
-                    st.success("🎉 تم تسجيل الطبيب بنجاح! اذهب الآن لتبويب الأسعار المخصصة لتحديد موازنتك معه.")
+                    st.success("🎉 تم تسجيل الطبيب بنجاح!")
                     st.rerun()
                 except sqlite3.IntegrityError:
                     st.error("هذا الطبيب مسجل مسبقاً!")
@@ -148,45 +152,48 @@ elif choice == "doctors":
     df_docs = pd.read_sql_query("SELECT name as [اسم الطبيب], phone as [الهاتف] FROM doctors", conn)
     st.dataframe(df_docs, use_container_width=True)
 
-# 3. شاشة إدارة أسعار التركيبات وقوائم أسعار الأطباء الخاصة
+# 3. شاشة كتالوج الأسعار الكلية والأسعار المخصصة (بجانب بعضهما)
 elif choice == "prices":
-    st.subheader("⚙️ إدارة أنواع التركيبات وتعيين أسعار خاصة لكل طبيب")
+    st.subheader("⚙️ كتالوج الأسعار الكلية وتعديلات أسعار الأطباء")
     
-    col_prod, col_rate = st.columns(2)
-    with col_prod:
-        st.markdown("### 1. إضافة نوع تركيبة جديد للمعمل")
-        with st.form("add_product_form", clear_on_submit=True):
-            p_name = st.text_input("اسم التركيبة (مثال: زيركون ألماني، بورسلين)")
-            if st.form_submit_button("إضافة الصنف للكتالوج"):
-                if p_name:
-                    try:
-                        cursor.execute("INSERT INTO products (name) VALUES (?)", (p_name,))
-                        conn.commit()
-                        st.success("✅ تم إضافة نوع التركيبة بنجاح!")
-                        st.rerun()
-                    except sqlite3.IntegrityError:
-                        st.error("هذه التركيبة مضافة بالفعل!")
+    col_general, col_custom = st.columns(2)
     
-    with col_rate:
-        st.markdown("### 2. تخصيص سعر طبيب معين لتركيبة معينة")
+    with col_general:
+        st.markdown("### 💰 1. قائمة الأسعار الكلية (لكل الناس)")
+        with st.form("general_price_form", clear_on_submit=True):
+            p_name = st.text_input("اسم التركيبة (مثال: زيركون)")
+            p_price = st.number_input("السعر العام الكلي لكل الناس (ج.م)", min_value=0.0, step=50.0)
+            if st.form_submit_button("حفظ في الكتالوج الكلي"):
+                if p_name and p_price > 0:
+                    cursor.execute("INSERT OR REPLACE INTO products (name, general_price) VALUES (?, ?)", (p_name, p_price))
+                    conn.commit()
+                    st.success("✅ تم حفظ التركيبة بالسعر العام!")
+                    st.rerun()
+        
+        # عرض الأسعار الكلية
+        df_general = pd.read_sql_query("SELECT name as [نوع التركيبة], general_price as [السعر الكلي العام (ج.م)] FROM products", conn)
+        st.dataframe(df_general, use_container_width=True)
+    
+    with col_custom:
+        st.markdown("### 🔄 2. تعديل السعر لطبيب معين (اختياري)")
         if not list_docs or not list_products:
-            st.warning("يرجى إضافة طبيب ونوع تركيبة أولاً لتتمكن من تخصيص الأسعار.")
+            st.warning("يرجى إضافة طبيب وتركيبة أولاً في الكتالوج الكلي لتتمكن من التعديل.")
         else:
             with st.form("assign_price_form", clear_on_submit=True):
                 target_doc = st.selectbox("اختر الطبيب", list_docs)
                 target_prod = st.selectbox("اختر التركيبة", list_products)
-                custom_rate = st.number_input("السعر الخاص المتفق عليه لهذا الطبيب (ج.م)", min_value=0.0, step=50.0)
-                if st.form_submit_button("حفظ السعر الخاص بالطبيب"):
+                custom_rate = st.number_input("السعر المعدل الخاص بهذا الطبيب (ج.م)", min_value=0.0, step=50.0)
+                if st.form_submit_button("تطبيق السعر الخاص"):
                     if custom_rate > 0:
                         cursor.execute("INSERT OR REPLACE INTO doctor_prices (doctor_name, product_name, custom_price) VALUES (?, ?, ?)",
                                        (target_doc, target_prod, custom_rate))
                         conn.commit()
-                        st.success(f"🎉 تم قيد سعر {custom_rate:,.2f} ج.م لتركيبة {target_prod} للطبيب {target_doc}!")
+                        st.success(f"🎉 تم تخصيص سعر {custom_rate:,.2f} ج.م للطبيب {target_doc}!")
                         st.rerun()
-
-    st.markdown("### 📋 جدول الأسعار المخصصة المسجلة حالياً لكل طبيب:")
-    df_custom_rates = pd.read_sql_query("SELECT doctor_name as [اسم الطبيب], product_name as [نوع التركيبة], custom_price as [السعر الخاص (ج.م)] FROM doctor_prices", conn)
-    st.dataframe(df_custom_rates, use_container_width=True)
+        
+        # عرض قائمة التعديلات الخاصة
+        df_custom_rates = pd.read_sql_query("SELECT doctor_name as [الطبيب], product_name as [التركيبة], custom_price as [السعر المعدل (ج.م)] FROM doctor_prices", conn)
+        st.dataframe(df_custom_rates, use_container_width=True)
 
 # 4. شاشة حسابات الفنيين
 elif choice == "technicians":
@@ -200,9 +207,3 @@ elif choice == "technicians":
                 try:
                     cursor.execute("INSERT INTO technicians (name, specialty, default_commission) VALUES (?, ?, ?)", (t_name, t_spec, t_comm))
                     conn.commit()
-                    st.success("🎉 تم تسجيل الفني بنجاح!")
-                    st.rerun()
-                except sqlite3.IntegrityError:
-                    st.error("هذا الفني مسجل مسبقاً!")
-            else:
-                st.error("يرجى كتابة اسم الفني")
