@@ -150,4 +150,4 @@ elif choice == "📊 التقارير والإكسيل":
             data=excel_data,
             file_name='dental_lab_report.xlsx',
             mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-       
+        )
