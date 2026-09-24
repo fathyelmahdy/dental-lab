@@ -9,7 +9,7 @@ from reportlab.lib.units import inch
 # إعداد الصفحة لتناسب شاشة الآيفون والموبايل والكمبيوتر
 st.set_page_config(page_title="معمل الأسنان المحترف", layout="centered", page_icon="🦷")
 
-# تم تغيير اسم ملف قاعدة البيانات لإنشاء سجل حسابات بكر ونظيف تماماً وتخطي قفل السيرفر
+# الاتصال بقاعدة البيانات بملف بكر ونظيف لتخطي أي قفل سحابي
 conn = sqlite3.connect('dental_lab_final_system_2026.db', check_same_thread=False)
 cursor = conn.cursor()
 
@@ -45,32 +45,32 @@ cursor.execute('''
 conn.commit()
 
 st.title("🦷 معمل الأسنان الذكي")
-st.write("الإصدار الاحترافي المطوّر - تحكم كامل بالتعديل والحذف لكافة المدخلات بالجنيه المصري")
+st.write("الإصدار الاحترافي المستقر - تحكم كامل بالتعديل والحذف لكافة المدخلات بالجنيه المصري")
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
 cursor.execute("SELECT name FROM doctors")
-list_docs = [r for r in cursor.fetchall()]
+list_docs = [r[0] for r in cursor.fetchall()]
 
 cursor.execute("SELECT name FROM products")
-list_products = [r for r in cursor.fetchall()]
+list_products = [r[0] for r in cursor.fetchall()]
 
 cursor.execute("SELECT name, default_commission FROM technicians")
-dict_techs = {r: r for r in cursor.fetchall()}
+dict_techs = {r[0]: r[1] for r in cursor.fetchall()}
 
 # --- حساب وعرض الماليّات العامة للمعمل بالأعلى ---
 total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
 try:
     cursor.execute("SELECT SUM(price) FROM cases")
     res_sales = cursor.fetchone()
-    total_sales = float(res_sales) if res_sales and res_sales is not None else 0.0
+    total_sales = float(res_sales[0]) if res_sales and res_sales[0] is not None else 0.0
 
     cursor.execute("SELECT SUM(amount_paid) FROM payments")
     res_paid = cursor.fetchone()
-    total_paid = float(res_paid) if res_paid and res_paid is not None else 0.0
+    total_paid = float(res_paid[0]) if res_paid and res_paid[0] is not None else 0.0
 
     cursor.execute("SELECT SUM(tech_commission) FROM cases")
     res_tech = cursor.fetchone()
-    total_tech_commissions = float(res_tech) if res_tech and res_tech is not None else 0.0
+    total_tech_commissions = float(res_tech[0]) if res_tech and res_tech[0] is not None else 0.0
 except Exception:
     pass
 
@@ -111,12 +111,12 @@ if choice == "cases":
         elif patient:
             cursor.execute("SELECT custom_price FROM doctor_prices WHERE doctor_name=? AND product_name=?", (selected_doc, selected_type))
             price_match = cursor.fetchone()
-            if price_match and price_match is not None:
-                final_price = float(price_match)
+            if price_match and price_match[0] is not None:
+                final_price = float(price_match[0])
             else:
                 cursor.execute("SELECT general_price FROM products WHERE name=?", (selected_type,))
                 general_match = cursor.fetchone()
-                final_price = float(general_match) if general_match and general_match is not None else 0.0
+                final_price = float(general_match[0]) if general_match and general_match[0] is not None else 0.0
             
             suggested_comm = dict_techs.get(selected_tech, 0.0)
             cursor.execute("INSERT INTO cases (doctor_name, patient_name, case_type, price, tech_name, tech_commission) VALUES (?, ?, ?, ?, ?, ?)",
@@ -212,5 +212,3 @@ elif choice == "prices":
         st.markdown("### 🔄 2. تعديل السعر لطبيب معين (اختياري)")
         if not list_docs or not list_products:
             st.warning("يرجى إضافة طبيب وتركيبة أولاً لتتمكن من التعديل.")
-        else:
-            target_doc = st.selectbox("اختر الطبيب", list_docs)
