@@ -23,9 +23,9 @@ cursor.execute("CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTO
 conn.commit()
 
 st.title("🦷 معمل الأسنان الذكي")
-st.write("الإصدار الاحترافي المستقر - تحكم كامل بالمدخلات بالجنيه المصري")
+st.write("الإصدار الاحترافي المستقر الشامل - تحكم كامل بالمدخلات والتعديل بالجنيه المصري")
 
-# جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
+# جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً بنصوص صريحة ومسطحة
 cursor.execute("SELECT name FROM doctors")
 list_docs = [r[0] for r in cursor.fetchall()]
 
@@ -194,4 +194,3 @@ elif choice == "prices":
         target_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء"])
         target_prod = st.selectbox("اختر التركيبة", list_products if list_products else ["لا يوجد تركيبات"])
         custom_rate = st.number_input("السعر المعدل الخاص بهذا الطبيب (ج.م)", min_value=0.0, step=50.0)
-        
