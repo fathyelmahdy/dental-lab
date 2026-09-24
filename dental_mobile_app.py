@@ -9,11 +9,11 @@ from reportlab.lib.units import inch
 # إعداد الصفحة لتناسب شاشة الآيفون والموبايل والكمبيوتر
 st.set_page_config(page_title="معمل الأسنان المحترف", layout="centered", page_icon="🦷")
 
-# الاتصال بقاعدة البيانات بملف بكر ونظيف تماماً
+# الاتصال بقاعدة البيانات بملف بكر ونظيف تماماً لتخطي أي تجميد سابق
 conn = sqlite3.connect('dental_lab_final_system_2026.db', check_same_thread=False)
 cursor = conn.cursor()
 
-# إنشاء وتحديث الجداول المترابطة
+# إنشاء وتحديث الجداول المترابطة ببنية أساسية حرة
 cursor.execute("CREATE TABLE IF NOT EXISTS doctors (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, phone TEXT)")
 cursor.execute("CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, general_price REAL DEFAULT 0.0)")
 cursor.execute("CREATE TABLE IF NOT EXISTS doctor_prices (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor_name TEXT, product_name TEXT, custom_price REAL, UNIQUE(doctor_name, product_name))")
@@ -25,7 +25,7 @@ conn.commit()
 st.title("🦷 معمل الأسنان الذكي")
 st.write("الإصدار الاحترافي المستقر الشامل - تحكم كامل بالمدخلات بالجنيه المصري")
 
-# جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
+# جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً بنصوص صريحة ومسطحة
 cursor.execute("SELECT name FROM doctors")
 list_docs = [r[0] for r in cursor.fetchall()]
 
@@ -33,7 +33,7 @@ cursor.execute("SELECT name FROM products")
 list_products = [r[0] for r in cursor.fetchall()]
 
 cursor.execute("SELECT name FROM technicians")
-list_techs_dropdown = [r[0] for r in cursor.fetchall()]
+list_techs_records = [r[0] for r in cursor.fetchall()]
 
 # --- حساب وعرض الماليّات العامة للمعمل بالأعلى ---
 total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
@@ -81,10 +81,10 @@ if choice == "cases":
     selected_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء مسجلين"])
     patient = st.text_input("اسم المريض")
     selected_type = st.selectbox("نوع التركيبة", list_products if list_products else ["لا يوجد تركيبات"])
-    selected_tech = st.selectbox("الفني المسؤول عن الحالة", list_techs_dropdown if list_techs_dropdown else ["لا يوجد فنيين"])
+    selected_tech = st.selectbox("الفني المسؤول عن الحالة", list_techs_records if list_techs_records else ["لا يوجد فنيين"])
     
     if st.button("💾 حفظ وتثبيت الحالة بالمعمل"):
-        if not list_docs or not list_products or not list_techs_dropdown:
+        if not list_docs or not list_products or not list_techs_records:
             st.error("⚠️ خطأ: لا يمكنك الحفظ قبل تهيئة الأطباء والتركيبات والفنيين أولاً!")
         elif patient:
             cursor.execute("SELECT custom_price FROM doctor_prices WHERE doctor_name=? AND product_name=?", (selected_doc, selected_type))
@@ -161,7 +161,7 @@ elif choice == "doctors":
                 st.success("🗑️ تم حذف الطبيب بنجاح!")
                 st.rerun()
 
-# 3. شاشة كتالوج الأسعار والخصومات (تم مسح كافة الجمل الشرطية الحساسة تمامًا وتسطيح الأسطر لحماية السيرفر)
+# 3. شاشة كتالوج الأسعار والخصومات
 elif choice == "prices":
     st.subheader("⚙️ كتالوج الأسعار الكلية وتعديلات أسعار الأطباء")
     col_general, col_custom = st.columns(2)
@@ -193,3 +193,5 @@ elif choice == "prices":
         st.markdown("### 🔄 2. تعديل السعر لطبيب معين (اختياري)")
         target_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء"])
         target_prod = st.selectbox("اختر التركيبة", list_products if list_products else ["لا يوجد تركيبات"])
+        custom_rate = st.number_input("السعر المعدل الخاص بهذا الطبيب (ج.م)", min_value=0.0, step=50.0)
+        
