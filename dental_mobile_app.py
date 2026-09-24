@@ -49,7 +49,7 @@ st.markdown("""
 st.title("🦷 معمل الأسنان الذكي")
 st.write("نظام الحسابات السريع للموبايل")
 
-# حساب الإحصائيات المالية الإجمالية وعرضها بكروت جذابة بشكل آمن مئة بالمئة
+# حساب الإحصائيات المالية الإجمالية بشكل محمي وصحيح مئة بالمئة
 total_sales = 0.0
 total_paid = 0.0
 
@@ -68,7 +68,7 @@ try:
         total_paid = float(res_paid[0])
         
     conn.close()
-except Exception:
+except Exception as e:
     total_sales = 0.0
     total_paid = 0.0
 
@@ -150,4 +150,4 @@ elif choice == "📊 التقارير والإكسيل":
             data=excel_data,
             file_name='dental_lab_report.xlsx',
             mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
+       
