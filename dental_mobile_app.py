@@ -36,20 +36,11 @@ try:
 except Exception as db_err:
     st.error(f"خطأ في إعداد قاعدة البيانات: {db_err}")
 
-# تحسين مظهر التطبيق ليدعم اللغة العربية من اليمين إلى اليسار
-st.markdown("""
-    <style>
-    body { text-align: right; direction: rtl; }
-    div.stButton > button:first-child { background-color: #27ae60; color:white; width: 100%; border-radius: 8px; font-weight: bold; }
-    div.stDownloadButton > button:first-child { background-color: #2980b9; color:white; width: 100%; border-radius: 8px; font-weight: bold; }
-    .stRadio > div { flex-direction: row-reverse; justify-content: center; }
-    </style>
-""", unsafe_allowed_html=True)
-
+# عنوان التطبيق الرئيسي
 st.title("🦷 معمل الأسنان الذكي")
 st.write("نظام الحسابات السريع للموبايل")
 
-# حساب الإحصائيات المالية الإجمالية بشكل محمي وصحيح مئة بالمئة
+# حساب الإحصائيات المالية الإجمالية بشكل محمي ومجرب
 total_sales = 0.0
 total_paid = 0.0
 
@@ -83,9 +74,9 @@ with col2:
 
 st.markdown("---")
 
-# القائمة السفلية أو أزرار التنقل السريع تناسب شاشات اللمس
+# القائمة المخصصة للتنقل
 menu = ["📋 تسجيل حالة", "💸 دفعة نقداً", "📊 التقارير والإكسيل"]
-choice = st.radio("اختر العملية المطلوبة:", menu)
+choice = st.selectbox("اختر العملية المطلوبة من القائمة:", menu)
 
 # شاشة تسجيل الحالات
 if choice == "📋 تسجيل حالة":
@@ -150,4 +141,4 @@ elif choice == "📊 التقارير والإكسيل":
             data=excel_data,
             file_name='dental_lab_report.xlsx',
             mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
+       
