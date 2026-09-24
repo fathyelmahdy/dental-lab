@@ -40,11 +40,10 @@ try:
     cursor.execute("ALTER TABLE cases ADD COLUMN tech_commission REAL DEFAULT 0.0")
     conn.commit()
 except sqlite3.OperationalError:
-    # الأعمدة موجودة بالفعل، لا تفعل شيئاً
     pass
 
 st.title("🦷 نظام معمل الأسنان المتكامل")
-st.write("إصدار المليّات وعمولات الفنيين")
+st.write("إصدار المليّات وعمولات الفنيين بالجنيه المصري")
 
 # حساب الإحصائيات المالية العامة للمعمل بشكل آمن
 total_sales = 0.0
@@ -54,28 +53,28 @@ total_tech_commissions = 0.0
 try:
     cursor.execute("SELECT SUM(price) FROM cases")
     row_sales = cursor.fetchone()
-    if row_sales and row_sales[0] is not None:
-        total_sales = float(row_sales[0])
+    if row_sales and row_sales is not None:
+        total_sales = float(row_sales)
 
     cursor.execute("SELECT SUM(amount_paid) FROM payments")
     row_paid = cursor.fetchone()
-    if row_paid and row_paid[0] is not None:
-        total_paid = float(row_paid[0])
+    if row_paid and row_paid is not None:
+        total_paid = float(row_paid)
 
     cursor.execute("SELECT SUM(tech_commission) FROM cases")
     row_tech = cursor.fetchone()
-    if row_tech and row_tech[0] is not None:
-        total_tech_commissions = float(row_tech[0])
+    if row_tech and row_tech is not None:
+        total_tech_commissions = float(row_tech)
 except Exception:
     pass
 
 remaining_debts = total_sales - total_paid
 
-# عرض ماليّات المعمل بأعلى شاشة الموبايل
+# عرض ماليّات المعمل بأعلى شاشة الموبايل بالجنيه المصري
 col1, col2, col3 = st.columns(3)
-col1.metric("💰 إجمالي المبيعات", f"{total_sales:,.2f}")
-col2.metric("💳 ديون الأطباء", f"{remaining_debts:,.2f}")
-col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f}")
+col1.metric("💰 إجمالي المبيعات", f"{total_sales:,.2f} ج.م")
+col2.metric("💳 ديون الأطباء", f"{remaining_debts:,.2f} ج.م")
+col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.م")
 
 st.markdown("---")
 
@@ -86,13 +85,13 @@ tab_cases, tab_doctors, tab_technicians, tab_products, tab_payments, tab_reports
 
 # جلب قوائم البيانات المشتركة
 cursor.execute("SELECT name FROM doctors")
-list_docs = [r[0] for r in cursor.fetchall()]
+list_docs = [r for r in cursor.fetchall()]
 
 cursor.execute("SELECT name, price FROM products")
-dict_products = {r[0]: r[1] for r in cursor.fetchall()}
+dict_products = {r: r for r in cursor.fetchall()}
 
 cursor.execute("SELECT name, default_commission FROM technicians")
-dict_techs = {r[0]: r[1] for r in cursor.fetchall()}
+dict_techs = {r: r for r in cursor.fetchall()}
 
 # 1. تبويب إدارة الحالات (الطلبات)
 with tab_cases:
@@ -114,10 +113,10 @@ with tab_cases:
             suggested_price = dict_products[selected_type]
             suggested_comm = dict_techs[selected_tech]
             
-            st.info(f"💵 السعر التلقائي: {suggested_price:,.2f} | 🛠️ عمولة الفني الافتراضية: {suggested_comm:,.2f}")
+            st.info(f"💵 السعر التلقائي: {suggested_price:,.2f} ج.م | 🛠️ عمولة الفني الافتراضية: {suggested_comm:,.2f} ج.م")
             
-            final_price = st.number_input("تأكيد السعر النهائي للحالة", min_value=0.0, value=suggested_price)
-            final_comm = st.number_input("تأكيد عمولة الفني لهذه الحالة", min_value=0.0, value=suggested_comm)
+            final_price = st.number_input("تأكيد السعر النهائي للحالة (ج.م)", min_value=0.0, value=suggested_price)
+            final_comm = st.number_input("تأكيد عمولة الفني لهذه الحالة (ج.م)", min_value=0.0, value=suggested_comm)
             
             if st.form_submit_button("حفظ الحالة وتثبيتها ماليًا"):
                 if patient:
@@ -153,7 +152,7 @@ with tab_technicians:
     with st.form("tech_form", clear_on_submit=True):
         t_name = st.text_input("اسم الفني الجديد")
         t_spec = st.text_input("التخصص (مثال: زيركون، بورسلين)")
-        t_comm = st.number_input("قيمة العموله الافتراضية لكل سن (ريال/جنيه)", min_value=0.0, step=10.0)
+        t_comm = st.number_input("قيمة العموله الافتراضية لكل سن (ج.م)", min_value=0.0, step=10.0)
         if st.form_submit_button("تسجيل الفني"):
             if t_name:
                 try:
@@ -169,7 +168,7 @@ with tab_technicians:
     df_tech_report = pd.read_sql_query('''
         SELECT tech_name as [اسم الفني], 
                COUNT(id) as [عدد الحالات المنجزة], 
-               SUM(tech_commission) as [إجمالي المستحقات] 
+               SUM(tech_commission) as [إجمالي المستحقات (ج.م)] 
         FROM cases WHERE tech_name IS NOT NULL GROUP BY tech_name
     ''', conn)
     st.dataframe(df_tech_report, use_container_width=True)
@@ -179,7 +178,7 @@ with tab_products:
     st.subheader("⚙️ قائمة أسعار خدمات المعمل")
     with st.form("product_form", clear_on_submit=True):
         p_name = st.text_input("اسم التركيبة")
-        p_price = st.number_input("السعر الافتراضي للسن", min_value=0.0, step=50.0)
+        p_price = st.number_input("السعر الافتراضي للسن (ج.م)", min_value=0.0, step=50.0)
         if st.form_submit_button("حفظ للكتالوج"):
             if p_name and p_price > 0:
                 try:
@@ -189,7 +188,7 @@ with tab_products:
                     st.rerun()
                 except sqlite3.IntegrityError:
                     st.error("مضافة بالفعل!")
-    df_prods = pd.read_sql_query("SELECT name as [نوع التركيبة], price as [السعر الافتراضي] FROM products", conn)
+    df_prods = pd.read_sql_query("SELECT name as [نوع التركيبة], price as [السعر الافتراضي (ج.م)] FROM products", conn)
     st.dataframe(df_prods, use_container_width=True)
 
 # 5. تبويب تسجيل المقبوضات النقدية
@@ -198,7 +197,7 @@ with tab_payments:
     if list_docs:
         with st.form("pay_form_new", clear_on_submit=True):
             pay_doc = st.selectbox("الطبيب المسدد", list_docs)
-            amt = st.number_input("المبلغ المستلم", min_value=0.0, step=100.0)
+            amt = st.number_input("المبلغ المستلم (ج.م)", min_value=0.0, step=100.0)
             if st.form_submit_button("تسجيل السند"):
                 if amt > 0:
                     cursor.execute("INSERT INTO payments (doctor_name, amount_paid) VALUES (?, ?)", (pay_doc, amt))
@@ -211,8 +210,8 @@ with tab_reports:
     st.subheader("📊 الفواتير وحالات المعمل الشاملة")
     df_all_cases = pd.read_sql_query('''
         SELECT id as [كود], doctor_name as [الطبيب], patient_name as [المريض], 
-               case_type as [التركيبة], price as [الحساب التابع للعيادة], 
-               tech_name as [الفني المسؤول], tech_commission as [عمولة الفني] 
+               case_type as [التركيبة], price as [الحساب (ج.م)], 
+               tech_name as [الفني المسؤول], tech_commission as [عمولة الفني (ج.م)] 
         FROM cases ORDER BY id DESC
     ''', conn)
     
