@@ -1,34 +1,42 @@
 import streamlit as st
-import sqlite3
 import pandas as pd
 import io
 
+# استخدام مكتبة قاعدة البيانات الحديثة للسيرفرات لتجنب الأعطال
+try:
+    import pysqlite3 as sqlite3
+except ImportError:
+    import sqlite3
+
+# إعدادات الصفحة لتناسب الموبايل بشكل عمودي متناسق
 st.set_page_config(page_title="معمل الأسنان الذكي", layout="centered", page_icon="🦷")
 
+# دالة الاتصال بقاعدة البيانات المحمية
 def get_db_connection():
-     try:
-        import pysqlite3 as sqlite3
-    except ImportError:
-        import sqlite3
-    
     conn = sqlite3.connect('dental_lab_mobile.db', check_same_thread=False, timeout=10)
     conn.row_factory = sqlite3.Row
     return conn
 
-conn = get_db_connection()
-conn.execute('''
-    CREATE TABLE IF NOT EXISTS cases (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        doctor_name TEXT, patient_name TEXT, case_type TEXT, price REAL
-    )''')
-conn.execute('''
-    CREATE TABLE IF NOT EXISTS payments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        doctor_name TEXT, amount_paid REAL
-    )''')
-conn.commit()
-conn.close()
+# إنشاء الجداول تلقائياً عند التشغيل الأول بشكل آمن
+try:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS cases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            doctor_name TEXT, patient_name TEXT, case_type TEXT, price REAL
+        )''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            doctor_name TEXT, amount_paid REAL
+        )''')
+    conn.commit()
+    conn.close()
+except Exception as db_err:
+    st.error(f"خطأ في إعداد قاعدة البيانات: {db_err}")
 
+# تحسين مظهر التطبيق ليدعم اللغة العربية من اليمين إلى اليسار
 st.markdown("""
     <style>
     body { text-align: right; direction: rtl; }
@@ -41,11 +49,21 @@ st.markdown("""
 st.title("🦷 معمل الأسنان الذكي")
 st.write("نظام الحسابات السريع للموبايل")
 
-conn = get_db_connection()
-total_sales = conn.execute("SELECT COALESCE(SUM(price), 0) as total FROM cases").fetchone()['total']
-total_paid = conn.execute("SELECT COALESCE(SUM(amount_paid), 0) as total FROM payments").fetchone()['total']
-conn.close()
+# حساب الإحصائيات المالية الإجمالية وعرضها بكروت جذابة
+try:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT COALESCE(SUM(price), 0) as total FROM cases")
+    total_sales = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COALESCE(SUM(amount_paid), 0) as total FROM payments")
+    total_paid = cursor.fetchone()[0]
+    conn.close()
+except Exception:
+    total_sales, total_paid = 0.0, 0.0
 
+# عرض الحسابات بأعلى الشاشة لتكون واضحة فور فتح الآيفون
 col1, col2 = st.columns(2)
 with col1:
     st.metric(label="💰 إجمالي المبيعات", value=f"{total_sales:,.2f}")
@@ -54,9 +72,11 @@ with col2:
 
 st.markdown("---")
 
+# القائمة السفلية أو أزرار التنقل السريع تناسب شاشات اللمس
 menu = ["📋 تسجيل حالة", "💸 دفعة نقداً", "📊 التقارير والإكسيل"]
 choice = st.radio("اختر العملية المطلوبة:", menu)
 
+# شاشة تسجيل الحالات
 if choice == "📋 تسجيل حالة":
     st.subheader("إدخال بيانات حالة جديدة")
     with st.form("case_form", clear_on_submit=True):
@@ -69,7 +89,8 @@ if choice == "📋 تسجيل حالة":
         if submit:
             if doc_name and patient_name and price > 0:
                 conn = get_db_connection()
-                conn.execute("INSERT INTO cases (doctor_name, patient_name, case_type, price) VALUES (?, ?, ?, ?)",
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO cases (doctor_name, patient_name, case_type, price) VALUES (?, ?, ?, ?)",
                              (doc_name, patient_name, case_type, price))
                 conn.commit()
                 conn.close()
@@ -78,6 +99,7 @@ if choice == "📋 تسجيل حالة":
             else:
                 st.error("⚠️ يرجى ملء كافة البيانات وتحديد السعر!")
 
+# شاشة تسجيل المقبوضات
 elif choice == "💸 دفعة نقداً":
     st.subheader("سند قبض نقدي / تحويل من عيادة")
     with st.form("payment_form", clear_on_submit=True):
@@ -88,7 +110,8 @@ elif choice == "💸 دفعة نقداً":
         if submit_pay:
             if pay_doc and amount > 0:
                 conn = get_db_connection()
-                conn.execute("INSERT INTO payments (doctor_name, amount_paid) VALUES (?, ?)", (pay_doc, amount))
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO payments (doctor_name, amount_paid) VALUES (?, ?)", (pay_doc, amount))
                 conn.commit()
                 conn.close()
                 st.success("✅ تم إيداع المبلغ وتحديث مديونية الطبيب!")
@@ -96,6 +119,7 @@ elif choice == "💸 دفعة نقداً":
             else:
                 st.error("⚠️ يرجى إدخال اسم الطبيب والمبلغ بشكل صحيح!")
 
+# شاشة التقارير وتنزيل الإكسيل
 elif choice == "📊 التقارير والإكسيل":
     st.subheader("جدول الحالات المسجلة")
     conn = get_db_connection()
@@ -114,5 +138,8 @@ elif choice == "📊 التقارير والإكسيل":
             label="📥 تحميل كشف الحساب بصيغة Excel",
             data=excel_data,
             file_name='dental_lab_report.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+    else:
             mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
