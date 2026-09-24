@@ -6,14 +6,14 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
 
-# إعداد الصفحة لتناسب شاشة الآيفون والموبايل بشكل عمودي متناسق
+# إعداد الصفحة لتناسب شاشة الآيفون والموبايل
 st.set_page_config(page_title="معمل الأسنان المحترف", layout="centered", page_icon="🦷")
 
-# الاتصال بقاعدة البيانات المحلية
+# الاتصال بقاعدة البيانات
 conn = sqlite3.connect('dental_lab_advanced_mobile.db', check_same_thread=False)
 cursor = conn.cursor()
 
-# إنشاء وتحديث الجداول المترابطة (المستخدمين، الأطباء، المنتجات، الفنيين، الحالات، المقبوضات)
+# إنشاء وتحديث الجداول المترابطة
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, role TEXT
@@ -42,7 +42,7 @@ cursor.execute('''
     )''')
 conn.commit()
 
-# زرع حساب المدير الافتراضي الأول أوتوماتيكياً (admin / 1234) إذا كان النظام فارغاً
+# الترقية التلقائية لحساب المدير الأول
 cursor.execute("SELECT COUNT(*) FROM users WHERE username='admin'")
 if cursor.fetchone()[0] == 0:
     cursor.execute("INSERT INTO users (username, password, role) VALUES ('admin', '1234', 'Admin')")
@@ -55,7 +55,7 @@ try:
 except sqlite3.OperationalError:
     pass
 
-# --- نظام تسجيل الدخول المتطور والصلاحيات ---
+# --- نظام تسجيل الدخول والصلاحيات ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['user_role'] = None
@@ -80,7 +80,7 @@ if not st.session_state['logged_in']:
     st.info("💡 حساب المدير الافتراضي الحالي للدخول: اسم المستخدم: admin | الباسورد: 1234")
     st.stop()
 
-# شريط جانبي لعرض معلومات المستخدم وزر تسجيل الخروج
+# زر تسجيل الخروج والبيانات الجانبية
 if st.sidebar.button("🚪 تسجيل الخروج"):
     st.session_state['logged_in'] = False
     st.session_state['user_role'] = None
@@ -213,3 +213,6 @@ if role in ["Admin", "Accountant"]:
                             conn.commit()
                             st.success("✅ تم التحديث الافتراضي بقائمة الأسعار!")
                             st.rerun()
+                        except sqlite3.IntegrityError:
+                            st.error("مضافة بالفعل!")
+        else:
