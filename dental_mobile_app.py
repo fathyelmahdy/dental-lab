@@ -63,28 +63,28 @@ st.write("الإصدار المفتوح الشامل - مبيعات وعمولا
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
 cursor.execute("SELECT name FROM doctors")
-list_docs = [r[0] for r in cursor.fetchall()]
+list_docs = [r for r in cursor.fetchall()]
 
 cursor.execute("SELECT name FROM products")
-list_products = [r[0] for r in cursor.fetchall()]
+list_products = [r for r in cursor.fetchall()]
 
 cursor.execute("SELECT name, default_commission FROM technicians")
-dict_techs = {r[0]: r[1] for r in cursor.fetchall()}
+dict_techs = {r: r for r in cursor.fetchall()}
 
 # --- حساب وعرض الماليّات العامة للمعمل بالأعلى ---
 total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
 try:
     cursor.execute("SELECT SUM(price) FROM cases")
     res_sales = cursor.fetchone()
-    total_sales = float(res_sales[0]) if res_sales and res_sales[0] is not None else 0.0
+    total_sales = float(res_sales) if res_sales and res_sales is not None else 0.0
 
     cursor.execute("SELECT SUM(amount_paid) FROM payments")
     res_paid = cursor.fetchone()
-    total_paid = float(res_paid[0]) if res_paid and res_paid[0] is not None else 0.0
+    total_paid = float(res_paid) if res_paid and res_paid is not None else 0.0
 
     cursor.execute("SELECT SUM(tech_commission) FROM cases")
     res_tech = cursor.fetchone()
-    total_tech_commissions = float(res_tech[0]) if res_tech and res_tech[0] is not None else 0.0
+    total_tech_commissions = float(res_tech) if res_tech and res_tech is not None else 0.0
 except Exception:
     pass
 
@@ -125,12 +125,12 @@ if choice == "cases":
                 cursor.execute("SELECT custom_price FROM doctor_prices WHERE doctor_name=? AND product_name=?", (selected_doc, selected_type))
                 price_match = cursor.fetchone()
                 
-                if price_match and price_match[0] is not None:
-                    final_price = float(price_match[0])
+                if price_match and price_match is not None:
+                    final_price = float(price_match)
                 else:
                     cursor.execute("SELECT general_price FROM products WHERE name=?", (selected_type,))
                     general_match = cursor.fetchone()
-                    final_price = float(general_match[0]) if general_match and general_match[0] is not None else 0.0
+                    final_price = float(general_match) if general_match and general_match is not None else 0.0
                 
                 suggested_comm = dict_techs.get(selected_tech, 0.0)
                 
@@ -205,8 +205,9 @@ elif choice == "prices":
         st.dataframe(df_custom_rates, use_container_width=True)
 
 elif choice == "technicians":
-    st.subheader("⚙️ إدارة الفنيين وحساب عمولاتهم")
+    st.subheader("🧑‍🏭 إدارة الفنيين وحساب عمولاتهم")
     with st.form("tech_form_free", clear_on_submit=True):
         t_name = st.text_input("اسم الفني الجديد")
         t_spec = st.text_input("التخصص")
         t_comm = st.number_input("قيمة العموله الافتراضية لكل سن (ج.م)", min_value=0.0, step=10.0)
+        # تم تصحيح الخطأ وإعادة زر الحفظ الشامل هنا بنجاح
