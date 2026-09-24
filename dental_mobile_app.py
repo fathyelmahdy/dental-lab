@@ -9,7 +9,7 @@ from reportlab.lib.units import inch
 # إعداد الصفحة لتناسب شاشة الآيفون والموبايل والكمبيوتر
 st.set_page_config(page_title="معمل الأسنان المحترف", layout="centered", page_icon="🦷")
 
-# الاتصال بقاعدة البيانات بملف بكر ونظيف تماماً لتخطي أي قفل سحابي سابق
+# الاتصال بقاعدة البيانات المستقرة
 conn = sqlite3.connect('dental_lab_final_system_2026.db', check_same_thread=False)
 cursor = conn.cursor()
 
@@ -60,15 +60,17 @@ col2.metric("💳 ديون الأطباء", f"{remaining_debts:,.2f} ج.م")
 col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.م")
 st.markdown("---")
 
-menu_options = ["cases", "doctors", "prices", "technicians", "payments", "reports"]
+# إضافة خيار التعديلات كشاشة مستقلة بالكامل في النهاية لضمان الأمان
+menu_options = ["cases", "doctors", "prices", "technicians", "payments", "reports", "edit_panel"]
 
 choice_display = {
-    "cases": "📋 إدارة الحالات",
-    "doctors": "👨‍⚕️ دليل الأطباء",
-    "prices": "⚙️ كتالوج الأسعار والخصومات",
-    "technicians": "🧑‍🏭 حسابات الفنيين",
-    "payments": "💸 تسجيل المقبوضات",
-    "reports": "📊 التقارير والفواتير"
+    "cases": "📋 الحالات",
+    "doctors": "👨‍⚕️ الأطباء",
+    "prices": "⚙️ الأسعار",
+    "technicians": "🧑‍🏭 الفنيين",
+    "payments": "💸 المقبوضات",
+    "reports": "📊 التقارير",
+    "edit_panel": "🔄 لوحة التعديل السريع"
 }
 
 choice = st.radio("⬇️ اختر الشاشة المطلوبة لعرض خياراتها بالكامل:", menu_options, format_func=lambda x: choice_display[x], horizontal=True)
@@ -152,7 +154,7 @@ elif choice == "prices":
             st.success("🎉 تم تخصيص السعر المخصص بنجاح!")
             st.rerun()
 
-# 4. شاشة حسابات الفنيين الصافية والقديمة المستقرة 100%
+# 4. شاشة حسابات الفنيين المستقرة
 elif choice == "technicians":
     st.subheader("🧑‍🏭 إدارة الفنيين وتعديل موازنتهم وعمولاتهم")
     st.markdown("### ➕ تسجيل فني جديد")
@@ -195,4 +197,3 @@ elif choice == "reports":
         unique_docs_filter = ["الكل"] + list_docs
         selected_filter_doc = st.selectbox("🔍 تصفية الحالات باسم طبيب محدد:", unique_docs_filter)
         for case in all_cases_data:
-            c_id, c_doc, c_pat, c_type, c_price = case
