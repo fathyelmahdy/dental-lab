@@ -23,7 +23,7 @@ cursor.execute("CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTO
 conn.commit()
 
 st.title("🦷 معمل الأسنان الذكي")
-st.write("الإصدار الصافي والمستقر - تحكم كامل بالمدخلات بالجنيه المصري")
+st.write("الإصدار الاحترافي المستقر - تحكم كامل بالمدخلات بالجنيه المصري")
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
 cursor.execute("SELECT name FROM doctors")
@@ -77,6 +77,7 @@ st.markdown("---")
 # 1. شاشة إدارة الحالات
 if choice == "cases":
     st.subheader("📋 تسجيل وتعديل حالات المعمل اليومية")
+    st.markdown("### ➕ إضافة حالة جديدة")
     selected_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء مسجلين - اضغط على دليل الأطباء بالأعلى لإضافتهم"])
     patient = st.text_input("اسم المريض")
     selected_type = st.selectbox("نوع التركيبة", list_products if list_products else ["لا يوجد تركيبات - اضغط على كتالوج الأسعار بالأعلى لإضافتها"])
@@ -197,4 +198,3 @@ elif choice == "prices":
             target_doc = st.selectbox("اختر الطبيب", list_docs)
             target_prod = st.selectbox("اختر التركيبة", list_products)
             custom_rate = st.number_input("السعر المعدل الخاص بهذا الطبيب (ج.م)", min_value=0.0, step=50.0)
-            if st.button("💾 تطبيق / تعديل السعر الخاص"):
