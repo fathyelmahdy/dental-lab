@@ -56,28 +56,28 @@ st.write("الإصدار المفتوح الشامل - مبيعات وعمولا
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
 cursor.execute("SELECT name FROM doctors")
-list_docs = [r for r in cursor.fetchall()]
+list_docs = [r[0] for r in cursor.fetchall()]
 
 cursor.execute("SELECT name FROM products")
-list_products = [r for r in cursor.fetchall()]
+list_products = [r[0] for r in cursor.fetchall()]
 
 cursor.execute("SELECT name, default_commission FROM technicians")
-dict_techs = {r: r for r in cursor.fetchall()}
+dict_techs = {r[0]: r[1] for r in cursor.fetchall()}
 
 # --- حساب وعرض الماليّات العامة للمعمل بالأعلى ---
 total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
 try:
     cursor.execute("SELECT SUM(price) FROM cases")
     res_sales = cursor.fetchone()
-    total_sales = float(res_sales) if res_sales and res_sales is not None else 0.0
+    total_sales = float(res_sales[0]) if res_sales and res_sales[0] is not None else 0.0
 
     cursor.execute("SELECT SUM(amount_paid) FROM payments")
     res_paid = cursor.fetchone()
-    total_paid = float(res_paid) if res_paid and res_paid is not None else 0.0
+    total_paid = float(res_paid[0]) if res_paid and res_paid[0] is not None else 0.0
 
     cursor.execute("SELECT SUM(tech_commission) FROM cases")
     res_tech = cursor.fetchone()
-    total_tech_commissions = float(res_tech) if res_tech and res_tech is not None else 0.0
+    total_tech_commissions = float(res_tech[0]) if res_tech and res_tech[0] is not None else 0.0
 except Exception:
     pass
 
@@ -86,10 +86,10 @@ remaining_debts = total_sales - total_paid
 col1, col2, col3 = st.columns(3)
 col1.metric("💰 إجمالي المبيعات", f"{total_sales:,.2f} ج.م")
 col2.metric("💳 ديون الأطباء", f"{remaining_debts:,.2f} ج.م")
-col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.م")
+col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.m")
 st.markdown("---")
 
-# تصميم القائمة العريضة كخيارات راديو واضحة جداً وكبيرة للتنقل الفوري
+# تصميم الأزرار العريضة للتنقل الفوري والسلس
 menu_options = ["cases", "doctors", "prices", "technicians", "payments", "reports"]
 
 choice_display = {
@@ -104,6 +104,7 @@ choice_display = {
 choice = st.radio("⬇️ اختر الشاشة المطلوبة لعرض خياراتها بالكامل:", menu_options, format_func=lambda x: choice_display[x], horizontal=True)
 st.markdown("---")
 
+# 1. شاشة إدارة الحالات
 if choice == "cases":
     st.subheader("تسجيل حالة جديدة بالمعمل")
     with st.form("case_form_free", clear_on_submit=True):
@@ -120,13 +121,13 @@ if choice == "cases":
                 cursor.execute("SELECT custom_price FROM doctor_prices WHERE doctor_name=? AND product_name=?", (selected_doc, selected_type))
                 price_match = cursor.fetchone()
                 
-                if price_match and price_match is not None:
+                if price_match and price_match[0] is not None:
                     final_price = float(price_match[0])
                 else:
-                    # 2. إذا لم يوجد سعر خاص، يتم جلب السعر الكلي العام لكل الناس
+                    # 2. إذا لم يوجد سعر خاص، يتم جلب السعر الكلي العام
                     cursor.execute("SELECT general_price FROM products WHERE name=?", (selected_type,))
                     general_match = cursor.fetchone()
-                    final_price = float(general_match[0]) if general_match else 0.0
+                    final_price = float(general_match[0]) if general_match and general_match[0] is not None else 0.0
                 
                 suggested_comm = dict_techs.get(selected_tech, 0.0)
                 
@@ -138,6 +139,7 @@ if choice == "cases":
             else:
                 st.error("يرجى كتابة اسم المريض")
 
+# 2. شاشة دليل الأطباء
 elif choice == "doctors":
     st.subheader("👨‍⚕️ دليل عيادات الأسنان والعملاء")
     with st.form("doc_form_free", clear_on_submit=True):
@@ -157,6 +159,7 @@ elif choice == "doctors":
     df_docs = pd.read_sql_query("SELECT name as [اسم الطبيب], phone as [الهاتف] FROM doctors", conn)
     st.dataframe(df_docs, use_container_width=True)
 
+# 3. شاشة كتالوج الأسعار العامة والخصومات المخصصة للأطباء
 elif choice == "prices":
     st.subheader("⚙️ كتالوج الأسعار الكلية وتعديلات أسعار الأطباء")
     col_general, col_custom = st.columns(2)
@@ -174,7 +177,7 @@ elif choice == "prices":
                         st.success("✅ تم حفظ التركيبة بالسعر العام!")
                         st.rerun()
                     except sqlite3.IntegrityError:
-                        st.error("خطأ غير متوقع في الكتالوج!")
+                        st.error("خطأ غير متوقع!")
         df_general = pd.read_sql_query("SELECT name as [نوع التركيبة], general_price as [السعر الكلي العام (ج.م)] FROM products", conn)
         st.dataframe(df_general, use_container_width=True)
     
@@ -189,21 +192,20 @@ elif choice == "prices":
                 custom_rate = st.number_input("السعر المعدل الخاص بهذا الطبيب (ج.م)", min_value=0.0, step=50.0)
                 if st.form_submit_button("تطبيق السعر الخاص"):
                     if custom_rate > 0:
-                        cursor.execute("INSERT OR REPLACE INTO doctor_prices (doctor_name, product_name, custom_price) VALUES (?, ?, ?)",
-                                       (target_doc, target_prod, custom_rate))
-                        conn.commit()
-                        st.success(f"🎉 تم تخصيص السعر المخصص بنجاح!")
-                        st.rerun()
+                        try:
+                            cursor.execute("INSERT OR REPLACE INTO doctor_prices (doctor_name, product_name, custom_price) VALUES (?, ?, ?)",
+                                           (target_doc, target_prod, custom_rate))
+                            conn.commit()
+                            st.success(f"🎉 تم تخصيص السعر المخصص بنجاح!")
+                            st.rerun()
+                        except sqlite3.IntegrityError:
+                            st.error("خطأ في قيد السعر الخاص!")
         df_custom_rates = pd.read_sql_query("SELECT doctor_name as [الطبيب], product_name as [التركيبة], custom_price as [السعر المعدل (ج.م)] FROM doctor_prices", conn)
         st.dataframe(df_custom_rates, use_container_width=True)
 
+# 4. شاشة حسابات الفنيين
 elif choice == "technicians":
     st.subheader("🧑‍🏭 إدارة الفنيين وحساب عمولاتهم")
     with st.form("tech_form_free", clear_on_submit=True):
         t_name = st.text_input("اسم الفني الجديد")
         t_spec = st.text_input("التخصص")
-        t_comm = st.number_input("قيمة العموله الافتراضية لكل سن (ج.م)", min_value=0.0, step=10.0)
-        if st.form_submit_button("تسجيل الفني بالمعمل"):
-            if t_name:
-                try:
-                    cursor.execute("INSERT INTO technicians (name, specialty, default_commission) VALUES (?, ?, ?)", (t_name, t_spec, t_comm))
