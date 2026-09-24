@@ -49,26 +49,37 @@ st.markdown("""
 st.title("🦷 معمل الأسنان الذكي")
 st.write("نظام الحسابات السريع للموبايل")
 
-# حساب الإحصائيات المالية الإجمالية وعرضها بكروت جذابة
+# حساب الإحصائيات المالية الإجمالية وعرضها بكروت جذابة بشكل آمن مئة بالمئة
+total_sales = 0.0
+total_paid = 0.0
+
 try:
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT COALESCE(SUM(price), 0) as total FROM cases")
-    total_sales = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COALESCE(SUM(amount_paid), 0) as total FROM payments")
-    total_paid = cursor.fetchone()[0]
+    cursor.execute("SELECT SUM(price) FROM cases")
+    res_sales = cursor.fetchone()
+    if res_sales and res_sales[0] is not None:
+        total_sales = float(res_sales[0])
+        
+    cursor.execute("SELECT SUM(amount_paid) FROM payments")
+    res_paid = cursor.fetchone()
+    if res_paid and res_paid[0] is not None:
+        total_paid = float(res_paid[0])
+        
     conn.close()
 except Exception:
-    total_sales, total_paid = 0.0, 0.0
+    total_sales = 0.0
+    total_paid = 0.0
+
+remaining_debts = total_sales - total_paid
 
 # عرض الحسابات بأعلى الشاشة لتكون واضحة فور فتح الآيفون
 col1, col2 = st.columns(2)
 with col1:
     st.metric(label="💰 إجمالي المبيعات", value=f"{total_sales:,.2f}")
 with col2:
-    st.metric(label="💳 ديون معلقة للأطباء", value=f"{(total_sales - total_paid):,.2f}")
+    st.metric(label="💳 ديون معلقة للأطباء", value=f"{remaining_debts:,.2f}")
 
 st.markdown("---")
 
