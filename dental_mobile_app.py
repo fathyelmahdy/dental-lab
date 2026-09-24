@@ -10,7 +10,7 @@ st.set_page_config(page_title="معمل الأسنان المحترف", layout="
 conn = sqlite3.connect('dental_lab_advanced_mobile.db', check_same_thread=False)
 cursor = conn.cursor()
 
-# إنشاء وتحديث الجداول المترابطة (الأطباء، المنتجات، الحالات، المقبوضات، الفنيين)
+# إنشاء وتحديث الجداول المترابطة
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS doctors (
         id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, phone TEXT
@@ -26,8 +26,7 @@ cursor.execute('''
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS cases (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        doctor_name TEXT, patient_name TEXT, case_type TEXT, price REAL,
-        tech_name TEXT, tech_commission REAL
+        doctor_name TEXT, patient_name TEXT, case_type TEXT, price REAL
     )''')
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS payments (
@@ -35,24 +34,42 @@ cursor.execute('''
     )''')
 conn.commit()
 
+# ترقية تلقائية للجدول القديم لمنع خطأ الـ OperationalError
+try:
+    cursor.execute("ALTER TABLE cases ADD COLUMN tech_name TEXT")
+    cursor.execute("ALTER TABLE cases ADD COLUMN tech_commission REAL DEFAULT 0.0")
+    conn.commit()
+except sqlite3.OperationalError:
+    # الأعمدة موجودة بالفعل، لا تفعل شيئاً
+    pass
+
 st.title("🦷 نظام معمل الأسنان المتكامل")
 st.write("إصدار المليّات وعمولات الفنيين")
 
-# حساب الإحصائيات المالية العامة للمعمل
-cursor.execute("SELECT SUM(price) FROM cases")
-row_sales = cursor.fetchone()
-total_sales = float(row_sales[0]) if row_sales and row_sales[0] is not None else 0.0
+# حساب الإحصائيات المالية العامة للمعمل بشكل آمن
+total_sales = 0.0
+total_paid = 0.0
+total_tech_commissions = 0.0
 
-cursor.execute("SELECT SUM(amount_paid) FROM payments")
-row_paid = cursor.fetchone()
-total_paid = float(row_paid[0]) if row_paid and row_paid[0] is not None else 0.0
+try:
+    cursor.execute("SELECT SUM(price) FROM cases")
+    row_sales = cursor.fetchone()
+    if row_sales and row_sales[0] is not None:
+        total_sales = float(row_sales[0])
 
-cursor.execute("SELECT SUM(tech_commission) FROM cases")
-row_tech = cursor.fetchone()
-total_tech_commissions = float(row_tech[0]) if row_tech and row_tech[0] is not None else 0.0
+    cursor.execute("SELECT SUM(amount_paid) FROM payments")
+    row_paid = cursor.fetchone()
+    if row_paid and row_paid[0] is not None:
+        total_paid = float(row_paid[0])
+
+    cursor.execute("SELECT SUM(tech_commission) FROM cases")
+    row_tech = cursor.fetchone()
+    if row_tech and row_tech[0] is not None:
+        total_tech_commissions = float(row_tech[0])
+except Exception:
+    pass
 
 remaining_debts = total_sales - total_paid
-net_profit_estimate = total_paid - total_tech_commissions
 
 # عرض ماليّات المعمل بأعلى شاشة الموبايل
 col1, col2, col3 = st.columns(3)
@@ -152,8 +169,8 @@ with tab_technicians:
     df_tech_report = pd.read_sql_query('''
         SELECT tech_name as [اسم الفني], 
                COUNT(id) as [عدد الحالات المنجزة], 
-               SUM(tech_commission) as [إجمالي المستحقات (ريال/جنيه)] 
-        FROM cases GROUP BY tech_name
+               SUM(tech_commission) as [إجمالي المستحقات] 
+        FROM cases WHERE tech_name IS NOT NULL GROUP BY tech_name
     ''', conn)
     st.dataframe(df_tech_report, use_container_width=True)
 
