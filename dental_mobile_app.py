@@ -9,11 +9,11 @@ from reportlab.lib.units import inch
 # إعداد الصفحة لتناسب شاشة الآيفون والموبايل والكمبيوتر
 st.set_page_config(page_title="معمل الأسنان المحترف", layout="centered", page_icon="🦷")
 
-# الاتصال بقاعدة البيانات بملف بكر ونظيف تماماً
+# الاتصال بقاعدة البيانات بملف بكر ونظيف تماماً لتخطي أي قفل سحابي سابق
 conn = sqlite3.connect('dental_lab_final_system_2026.db', check_same_thread=False)
 cursor = conn.cursor()
 
-# إنشاء وتحديث الجداول المترابطة
+# إنشاء وتحديث الجداول المترابطة ببنية أساسية حرة وصافية
 cursor.execute("CREATE TABLE IF NOT EXISTS doctors (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, phone TEXT)")
 cursor.execute("CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, general_price REAL DEFAULT 0.0)")
 cursor.execute("CREATE TABLE IF NOT EXISTS doctor_prices (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor_name TEXT, product_name TEXT, custom_price REAL, UNIQUE(doctor_name, product_name))")
@@ -23,9 +23,9 @@ cursor.execute("CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTO
 conn.commit()
 
 st.title("🦷 معمل الأسنان الذكي")
-st.write("الإصدار الاحترافي المستقر الشامل - تحكم كامل بالمدخلات والتعديل بالجنيه المصري")
+st.write("الإصدار الاحترافي المستقر الشامل - مبيعات وعمولات وتعديل فوري بالجنيه المصري")
 
-# جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً بنصوص صريحة ومسطحة
+# جلب قوائم البيانات كـ نصوص صافية ومسطحة تماماً 100% لكسر تجميد السيرفر
 cursor.execute("SELECT name FROM doctors")
 list_docs = [r[0] for r in cursor.fetchall() if r]
 
@@ -109,15 +109,16 @@ if choice == "cases":
             st.error("يرجى كتابة اسم المريض")
             
     st.markdown("---")
-    st.markdown("### 🗑️ لوحة حذف الحالات المسجلة بالخطأ")
-    df_cases_edit = pd.read_sql_query("SELECT id as [كود الحالة], doctor_name as [الطبيب], patient_name as [المريض], case_type as [التركيبة], price as [الحساب (ج.م)] FROM cases ORDER BY id DESC", conn)
-    st.dataframe(df_cases_edit, use_container_width=True)
-    if not df_cases_edit.empty:
-        case_to_delete = st.selectbox("اختر كود الحالة المراد حذفها نهائياً:", df_cases_edit["كود الحالة"].tolist())
+    st.markdown("### 🗑️ لوحة مراجعة وحذف الحالات")
+    df_cases_view = pd.read_sql_query("SELECT id as [كود الحالة], doctor_name as [الطبيب], patient_name as [المريض], case_type as [التركيبة], price as [الحساب] FROM cases ORDER BY id DESC", conn)
+    st.dataframe(df_cases_view, use_container_width=True)
+    
+    if not df_cases_view.empty:
+        case_to_delete = st.selectbox("اختر كود الحالة المراد حذفها نهائياً:", df_cases_view["كود الحالة"].tolist())
         if st.button("❌ حذف هذه الحالة وتعديل الحسابات"):
             cursor.execute("DELETE FROM cases WHERE id=?", (int(case_to_delete),))
             conn.commit()
-            st.success("🎉 تم حذف الحالة بنجاح!")
+            st.success("🎉 تم حذف الحالة وتعديل الموازنة بنجاح!")
             st.rerun()
 
 # 2. شاشة دليل الأطباء
@@ -136,11 +137,11 @@ elif choice == "doctors":
                 st.error("هذا الطبيب مسجل مسبقاً!")
         else:
             st.error("برجاء إدخال اسم الطبيب أولاً!")
-            
+
     st.markdown("---")
     st.markdown("### 🔄 لوحة التعديل والحذف للأطباء")
-    df_docs = pd.read_sql_query("SELECT id as [كود الطبيب], name as [اسم الطبيب], phone as [الهاتف] FROM doctors", conn)
-    st.dataframe(df_docs, use_container_width=True)
+    df_docs_view = pd.read_sql_query("SELECT id as [كود الطبيب], name as [اسم الطبيب], phone as [الهاتف] FROM doctors ORDER BY id DESC", conn)
+    st.dataframe(df_docs_view, use_container_width=True)
     
     if list_docs:
         doc_to_manage = st.selectbox("اختر اسم الطبيب المراد تعديله أو حذفه:", list_docs)
@@ -170,14 +171,14 @@ elif choice == "prices":
         st.markdown("### 💰 1. قائمة الأسعار الكلية (لكل الناس)")
         p_name = st.text_input("اسم التركيبة (مثال: زيركون)")
         p_price = st.number_input("السعر العام الكلي لكل الناس (ج.م)", min_value=0.0, step=50.0)
-        if st.button("💾 حفظ في الكتالوج الكلي"):
+        if st.button("💾 حفظ / تعديل في الكتالوج الكلي"):
             if p_name and p_price > 0:
                 cursor.execute("INSERT OR REPLACE INTO products (name, general_price) VALUES (?, ?)", (p_name, p_price))
                 conn.commit()
-                st.success("✅ تم تحديث السعر العام!")
+                st.success("✅ تم تحديث السعر العام في الكتالوج!")
                 st.rerun()
                 
-        df_general = pd.read_sql_query("SELECT id as [كود الصنف], name as [نوع التركيبة], general_price as [السعر الكلي (ج.م)] FROM products", conn)
+        df_general = pd.read_sql_query("SELECT id as [كود الصنف], name as [نوع التركيبة], general_price as [السعر الكلي] FROM products", conn)
         st.dataframe(df_general, use_container_width=True)
         
         if list_products:
@@ -191,5 +192,5 @@ elif choice == "prices":
     
     with col_custom:
         st.markdown("### 🔄 2. تعديل السعر لطبيب معين (اختياري)")
-        target_doc = st.selectbox("اختر الطبيب للخصم الخاص", list_docs if list_docs else ["لا يوجد أطباء"])
-        target_prod = st.selectbox("اختر التركيبة للخصم الخاص", list_products if list_products else ["لا يوجد تركيبات"])
+        target_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء"])
+        target_prod = st.selectbox("اختر التركيبة", list_products if list_products else ["لا يوجد تركيبات"])
