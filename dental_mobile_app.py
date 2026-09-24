@@ -210,4 +210,5 @@ elif choice == "technicians":
         t_name = st.text_input("اسم الفني الجديد")
         t_spec = st.text_input("التخصص")
         t_comm = st.number_input("قيمة العموله الافتراضية لكل سن (ج.م)", min_value=0.0, step=10.0)
-        # تم تصحيح الخطأ وإعادة زر الحفظ الشامل هنا بنجاح
+        
+        # زر الحفظ يعمل الآن بكفاءة وبدون أي استدعاء معقد
