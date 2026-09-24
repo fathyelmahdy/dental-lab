@@ -9,7 +9,7 @@ from reportlab.lib.units import inch
 # إعداد الصفحة لتناسب شاشة الآيفون والموبايل والكمبيوتر
 st.set_page_config(page_title="معمل الأسنان المحترف", layout="centered", page_icon="🦷")
 
-# الاتصال بقاعدة البيانات المستقرة الجديدة
+# الاتصال بقاعدة البيانات المستقرة
 conn = sqlite3.connect('dental_lab_final_system_2026.db', check_same_thread=False)
 cursor = conn.cursor()
 
@@ -23,7 +23,7 @@ cursor.execute("CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTO
 conn.commit()
 
 st.title("🦷 معمل الأسنان الذكي")
-st.write("الإصدار الاحترافي المستقر الشامل - مبيعات وعمولات بالجنيه المصري")
+st.write("الإصدار الاحترافي الشامل - تحكم كامل ومباشر بالتعديل والحذف لكافة البيانات")
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً بنصوص صريحة ومسطحة
 cursor.execute("SELECT name FROM doctors")
@@ -76,11 +76,12 @@ st.markdown("---")
 
 # 1. شاشة إدارة الحالات
 if choice == "cases":
-    st.subheader("📋 تسجيل حالات المعمل اليومية")
-    selected_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء مسجلين - اضغط على دليل الأطباء لإضافتهم"])
+    st.subheader("📋 تسجيل وتعديل حالات المعمل اليومية")
+    st.markdown("### ➕ إضافة حالة جديدة")
+    selected_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء مسجلين"])
     patient = st.text_input("اسم المريض")
-    selected_type = st.selectbox("نوع التركيبة", list_products if list_products else ["لا يوجد تركيبات - اضغط على كتالوج الأسعار لإضافتها"])
-    selected_tech = st.selectbox("الفني المسؤول عن الحالة", list_techs_records if list_techs_records else ["لا يوجد فنيين - اضغط على حسابات الفنيين لإضافتهم"])
+    selected_type = st.selectbox("نوع التركيبة", list_products if list_products else ["لا يوجد تركيبات"])
+    selected_tech = st.selectbox("الفني المسؤول عن الحالة", list_techs_records if list_techs_records else ["لا يوجد فنيين"])
     
     if st.button("💾 حفظ وتثبيت الحالة بالمعمل"):
         if not list_docs or not list_products or not list_techs_records:
@@ -106,14 +107,23 @@ if choice == "cases":
             st.rerun()
         else:
             st.error("يرجى كتابة اسم المريض")
-
-    st.markdown("### 📋 سجل الحالات الحالية:")
+            
+    st.markdown("---")
+    st.markdown("### 🗑️ لوحة مراجعة وحذف الحالات")
     df_cases_view = pd.read_sql_query("SELECT id as [كود الحالة], doctor_name as [الطبيب], patient_name as [المريض], case_type as [التركيبة], price as [الحساب] FROM cases ORDER BY id DESC", conn)
     st.dataframe(df_cases_view, use_container_width=True)
+    
+    if not df_cases_view.empty:
+        case_to_delete = st.selectbox("اختر كود الحالة المراد حذفها نهائياً:", df_cases_edit_list := df_cases_view["كود الحالة"].tolist())
+        if st.button("❌ حذف هذه الحالة وتعديل الحسابات"):
+            cursor.execute("DELETE FROM cases WHERE id=?", (int(case_to_delete),))
+            conn.commit()
+            st.success("🎉 تم حذف الحالة وتعديل الموازنة بنجاح!")
+            st.rerun()
 
 # 2. شاشة دليل الأطباء
 elif choice == "doctors":
-    st.subheader("👨‍⚕️ دليل عيادات الأسنان والعملاء")
+    st.subheader("👨‍⚕️ إدارة دليل عيادات الأسنان والعملاء")
     new_doc = st.text_input("اسم الطبيب الجديد")
     phone_doc = st.text_input("رقم هاتف العيادة")
     if st.button("💾 إضافة الطبيب ونشره بالنظام"):
@@ -128,9 +138,29 @@ elif choice == "doctors":
         else:
             st.error("برجاء إدخال اسم الطبيب أولاً!")
 
-    st.markdown("### 📋 قائمة الأطباء والعملاء المسجلين حالياً:")
+    st.markdown("---")
+    st.markdown("### 🔄 لوحة التعديل والحذف للأطباء")
     df_docs_view = pd.read_sql_query("SELECT id as [كود الطبيب], name as [اسم الطبيب], phone as [الهاتف] FROM doctors ORDER BY id DESC", conn)
     st.dataframe(df_docs_view, use_container_width=True)
+    
+    if list_docs:
+        doc_to_manage = st.selectbox("اختر اسم الطبيب المراد تعديله أو حذفه:", list_docs)
+        edit_phone = st.text_input("اكتب رقم الهاتف الجديد للطبيب لتعديله:")
+        
+        col_edit_doc, col_del_doc = st.columns(2)
+        with col_edit_doc:
+            if st.button("🔄 حفظ تعديل هاتف الطبيب"):
+                cursor.execute("UPDATE doctors SET phone=? WHERE name=?", (edit_phone, doc_to_manage))
+                conn.commit()
+                st.success("✅ تم تحديث بيانات الطبيب بنجاح!")
+                st.rerun()
+        with col_del_doc:
+            if st.button("❌ حذف هذا الطبيب نهائياً من الدفاتر"):
+                cursor.execute("DELETE FROM doctors WHERE name=?", (doc_to_manage,))
+                cursor.execute("DELETE FROM doctor_prices WHERE doctor_name=?", (doc_to_manage,))
+                conn.commit()
+                st.success("🗑️ تم حذف الطبيب بنجاح!")
+                st.rerun()
 
 # 3. شاشة كتالوج الأسعار والخصومات
 elif choice == "prices":
@@ -141,50 +171,26 @@ elif choice == "prices":
         st.markdown("### 💰 1. قائمة الأسعار الكلية (لكل الناس)")
         p_name = st.text_input("اسم التركيبة (مثال: زيركون)")
         p_price = st.number_input("السعر العام الكلي لكل الناس (ج.م)", min_value=0.0, step=50.0)
-        if st.button("💾 حفظ في الكتالوج الكلي"):
+        if st.button("💾 حفظ / تعديل في الكتالوج الكلي"):
             if p_name and p_price > 0:
                 cursor.execute("INSERT OR REPLACE INTO products (name, general_price) VALUES (?, ?)", (p_name, p_price))
                 conn.commit()
-                st.success("✅ تم تحديث السعر العام!")
+                st.success("✅ تم تحديث السعر العام في الكتالوج!")
                 st.rerun()
                 
         df_general = pd.read_sql_query("SELECT id as [كود الصنف], name as [نوع التركيبة], general_price as [السعر الكلي] FROM products", conn)
         st.dataframe(df_general, use_container_width=True)
+        
+        if list_products:
+            prod_to_del = st.selectbox("اختر تركيبة لحذفها نهائياً:", list_products)
+            if st.button("❌ حذف التركيبة من الكتالوج"):
+                cursor.execute("DELETE FROM products WHERE name=?", (prod_to_del,))
+                cursor.execute("DELETE FROM doctor_prices WHERE product_name=?", (prod_to_del,))
+                conn.commit()
+                st.success("🗑️ تم حذف الصنف كلياً!")
+                st.rerun()
     
     with col_custom:
         st.markdown("### 🔄 2. تعديل السعر لطبيب معين (اختياري)")
         target_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء"])
         target_prod = st.selectbox("اختر التركيبة", list_products if list_products else ["لا يوجد تركيبات"])
-        custom_rate = st.number_input("السعر المعدل الخاص بهذا الطبيب (ج.م)", min_value=0.0, step=50.0)
-        
-        if st.button("💾 تطبيق السعر الخاص"):
-            if custom_rate > 0:
-                cursor.execute("INSERT OR REPLACE INTO doctor_prices (doctor_name, product_name, custom_price) VALUES (?, ?, ?)", (target_doc, target_prod, custom_rate))
-                conn.commit()
-                st.success("🎉 تم تخصيص السعر المخصص بنجاح!")
-                st.rerun()
-                    
-        df_custom_rates = pd.read_sql_query("SELECT id as [رقم القيد], doctor_name as [الطبيب], product_name as [التركيبة], custom_price as [السعر] FROM doctor_prices", conn)
-        st.dataframe(df_custom_rates, use_container_width=True)
-
-# 4. شاشة حسابات الفنيين الصافية
-elif choice == "technicians":
-    st.subheader("🧑‍🏭 إدارة الفنيين وتعديل موازنتهم")
-    st.markdown("### ➕ تسجيل فني جديد")
-    t_name_input = st.text_input("اسم الفني الجديد")
-    t_spec_input = st.text_input("التخصص (مثال: بورسلين)")
-    t_comm_input = st.number_input("قيمة العموله الافتراضية للفني لكل سن (ج.م)", min_value=0.0, step=10.0)
-    
-    if st.button("💾 تسجيل وحفظ الفني بالمعمل"):
-        if t_name_input:
-            try:
-                cursor.execute("INSERT INTO technicians (name, specialty, default_commission) VALUES (?, ?, ?)", (t_name_input, t_spec_input, t_comm_input))
-                conn.commit()
-                st.success(f"🎉 تم حفظ بيانات الفني {t_name_input} بنجاح!")
-                st.rerun()
-            except sqlite3.IntegrityError:
-                st.error("⚠️ هذا الفني مسجل مسبقاً في الدفاتر!")
-        else:
-            st.error("⚠️ يرجى كتابة اسم الفني أولاً")
-            
-    st.markdown("### 📋 قائمة الفنيين والمسؤولين المسجلين حالياً:")
