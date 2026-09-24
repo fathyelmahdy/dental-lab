@@ -6,10 +6,14 @@ import io
 st.set_page_config(page_title="معمل الأسنان الذكي", layout="centered", page_icon="🦷")
 
 def get_db_connection():
-    try:
+     try:
         import pysqlite3 as sqlite3
     except ImportError:
         import sqlite3
+    
+    conn = sqlite3.connect('dental_lab_mobile.db', check_same_thread=False, timeout=10)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 conn = get_db_connection()
 conn.execute('''
