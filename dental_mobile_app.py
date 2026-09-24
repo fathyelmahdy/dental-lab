@@ -201,12 +201,14 @@ elif choice == "reports":
     st.subheader("📊 الفواتير وحالات المعمل وطباعة الـ PDF")
     cursor.execute("SELECT id, doctor_name, patient_name, case_type, price FROM cases ORDER BY id DESC")
     all_cases_data = cursor.fetchall()
+    
     if all_cases_data:
         unique_docs_filter = ["الكل"] + list_docs
         selected_filter_doc = st.selectbox("🔍 تصفية الحالات باسم طبيب محدد:", unique_docs_filter)
+        
         for case in all_cases_data:
             c_id, c_doc, c_pat, c_type, c_price = case
             if selected_filter_doc != "الكل" and c_doc != selected_filter_doc:
                 continue
-            col_info, col_btn = st.columns([3, 1])
-            with col_info:
+                
+            # عرض البيانات بشكل نصي صافي ومبسط مئة بالمئة لمنع أي أخطاء مسافات
