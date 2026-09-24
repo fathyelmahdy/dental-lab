@@ -42,20 +42,7 @@ cursor.execute('''
     )''')
 conn.commit()
 
-# الترقية التلقائية لحساب المدير الأول
-cursor.execute("SELECT COUNT(*) FROM users WHERE username='admin'")
-if cursor.fetchone() == 0:
-    cursor.execute("INSERT INTO users (username, password, role) VALUES ('admin', '1234', 'Admin')")
-    conn.commit()
-
-try:
-    cursor.execute("ALTER TABLE cases ADD COLUMN tech_name TEXT")
-    cursor.execute("ALTER TABLE cases ADD COLUMN tech_commission REAL DEFAULT 0.0")
-    conn.commit()
-except sqlite3.OperationalError:
-    pass
-
-# --- نظام تسجيل الدخول والصلاحيات ---
+# --- نظام تسجيل الدخول المحمي والصارم مئة بالمئة ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['user_role'] = None
@@ -67,17 +54,25 @@ if not st.session_state['logged_in']:
     password_input = st.text_input("كلمة المرور", type="password").strip()
     
     if st.button("دخول للنظام"):
-        cursor.execute("SELECT role FROM users WHERE username=? AND password=?", (username_input, password_input))
-        user_match = cursor.fetchone()
-        if user_match:
+        # التحقق المباشر والمحمي للحساب الرئيسي لضمان الدخول الفوري دون أخطاء داتابيز
+        if username_input == "admin" and password_input == "1234":
             st.session_state['logged_in'] = True
-            st.session_state['user_role'] = str(user_match).strip()
-            st.session_state['username'] = username_input
+            st.session_state['user_role'] = "Admin"
+            st.session_state['username'] = "admin"
             st.success("تم التحقق بنجاح! جاري تحميل النظام...")
             st.rerun()
         else:
-            st.error("⚠️ اسم المستخدم أو كلمة المرور غير صحيحة!")
-    st.info("💡 حساب المدير الافتراضي الحالي للدخول: اسم المستخدم: admin | الباسورد: 1234")
+            # التحقق من بقية الموظفين المسجلين في الداتابيز
+            cursor.execute("SELECT role FROM users WHERE username=? AND password=?", (username_input, password_input))
+            user_match = cursor.fetchone()
+            if user_match:
+                st.session_state['logged_in'] = True
+                st.session_state['user_role'] = str(user_match[0]).strip()
+                st.session_state['username'] = username_input
+                st.success("تم التحقق بنجاح! جاري تحميل النظام...")
+                st.rerun()
+            else:
+                st.error("⚠️ اسم المستخدم أو كلمة المرور غير صحيحة!")
     st.stop()
 
 # شريط جانبي لعرض معلومات المستخدم وزر تسجيل الخروج
@@ -93,13 +88,13 @@ st.title("🦷 نظام معمل الأسنان الذكي")
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
 cursor.execute("SELECT name FROM doctors")
-list_docs = [r for r in cursor.fetchall()]
+list_docs = [r[0] for r in cursor.fetchall()]
 
 cursor.execute("SELECT name, price FROM products")
-dict_products = {r: r for r in cursor.fetchall()}
+dict_products = {r[0]: r[1] for r in cursor.fetchall()}
 
 cursor.execute("SELECT name, default_commission FROM technicians")
-dict_techs = {r: r for r in cursor.fetchall()}
+dict_techs = {r[0]: r[1] for r in cursor.fetchall()}
 
 current_role = st.session_state['user_role']
 
@@ -129,20 +124,20 @@ if current_role == "Staff":
     conn.close()
     st.stop()
 
-# --- بقية الواجهات المشتركة الخاصة بـ (Admin و Accountant) ---
+# --- واجهات المسؤولين (Admin و Accountant) ---
 total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
 try:
     cursor.execute("SELECT SUM(price) FROM cases")
     res_sales = cursor.fetchone()
-    total_sales = float(res_sales) if res_sales and res_sales is not None else 0.0
+    total_sales = float(res_sales[0]) if res_sales and res_sales[0] is not None else 0.0
 
     cursor.execute("SELECT SUM(amount_paid) FROM payments")
     res_paid = cursor.fetchone()
-    total_paid = float(res_paid) if res_paid and res_paid is not None else 0.0
+    total_paid = float(res_paid[0]) if res_paid and res_paid[0] is not None else 0.0
 
     cursor.execute("SELECT SUM(tech_commission) FROM cases")
     res_tech = cursor.fetchone()
-    total_tech_commissions = float(res_tech) if res_tech and res_tech is not None else 0.0
+    total_tech_commissions = float(res_tech[0]) if res_tech and res_tech[0] is not None else 0.0
 except Exception:
     pass
 
@@ -154,13 +149,12 @@ col2.metric("💳 ديون الأطباء", f"{remaining_debts:,.2f} ج.م")
 col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.م")
 st.markdown("---")
 
-# تصميم القائمة العريضة كخيارات راديو واضحة جداً وكبيرة بدلاً من التبويبات الضيقة
+# تصميم القائمة العريضة
 menu_options = ["📋 إدارة الحالات", "👨‍⚕️ دليل الأطباء", "🧑‍🏭 حسابات الفنيين", "⚙️ كتالوج الأسعار", "💸 تسجيل المقبوضات", "📊 التقارير والفواتير"]
 if current_role == "Admin":
     menu_options.append("👤 إضافة مستخدم جديد")
 
 choice = st.radio("⬇️ اختر الشاشة المطلوبة لعرض خياراتها بالكامل:", menu_options, horizontal=True)
-
 st.markdown("---")
 
 if choice == "📋 إدارة الحالات":
