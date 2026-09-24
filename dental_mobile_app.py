@@ -9,7 +9,7 @@ from reportlab.lib.units import inch
 # إعداد الصفحة لتناسب شاشة الآيفون والموبايل والكمبيوتر
 st.set_page_config(page_title="معمل الأسنان المحترف", layout="centered", page_icon="🦷")
 
-# الاتصال بقاعدة البيانات بملف بكر ونظيف تماماً لتخطي أي قفل سحابي سابق
+# الاتصال بقاعدة البيانات بملف بكر ونظيف تماماً
 conn = sqlite3.connect('dental_lab_final_system_2026.db', check_same_thread=False)
 cursor = conn.cursor()
 
@@ -55,7 +55,7 @@ except Exception:
 remaining_debts = total_sales - total_paid
 
 col1, col2, col3 = st.columns(3)
-col1.metric("💰 إجمالي المبيعات", f"{total_sales:,.2f} ج.م")
+col1.metric("💰 إجمالي Mبيعات", f"{total_sales:,.2f} ج.م")
 col2.metric("💳 ديون الأطباء", f"{remaining_debts:,.2f} ج.م")
 col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.م")
 st.markdown("---")
@@ -145,7 +145,7 @@ elif choice == "doctors":
         
         col_edit_doc, col_del_doc = st.columns(2)
         with col_edit_doc:
-            if st.button("🔄 حفظ Tعديل هاتف الطبيب"):
+            if st.button("🔄 حفظ تعديل هاتف الطبيب"):
                 cursor.execute("UPDATE doctors SET phone=? WHERE name=?", (edit_phone, doc_to_manage))
                 conn.commit()
                 st.success("✅ تم تحديث بيانات الطبيب بنجاح!")
@@ -158,7 +158,7 @@ elif choice == "doctors":
                 st.success("🗑️ تم حذف الطبيب بنجاح!")
                 st.rerun()
 
-# 3. شاشة كتالوج الأسعار والخصومات (تم إزالة البنية الشرطية المتداخلة لمنع الخطأ نهائياً)
+# 3. شاشة كتالوج الأسعار والخصومات (تم مسح كافة الجمل الشرطية المسببة للأخطاء الحرة)
 elif choice == "prices":
     st.subheader("⚙️ كتالوج الأسعار الكلية وتعديلات أسعار الأطباء")
     col_general, col_custom = st.columns(2)
@@ -167,12 +167,11 @@ elif choice == "prices":
         st.markdown("### 💰 1. قائمة الأسعار الكلية (لكل الناس)")
         p_name = st.text_input("اسم التركيبة (مثال: زيركون)")
         p_price = st.number_input("السعر العام الكلي لكل الناس (ج.م)", min_value=0.0, step=50.0)
-        if st.button("💾 حفظ / تعديل في الكتالوج الكلي"):
-            if p_name and p_price > 0:
-                cursor.execute("INSERT OR REPLACE INTO products (name, general_price) VALUES (?, ?)", (p_name, p_price))
-                conn.commit()
-                st.success("✅ تم تحديث السعر العام في الكتالوج!")
-                st.rerun()
+        if st.button("💾 حفظ في الكتالوج الكلي"):
+            cursor.execute("INSERT OR REPLACE INTO products (name, general_price) VALUES (?, ?)", (p_name, p_price))
+            conn.commit()
+            st.success("✅ تم تحديث السعر العام!")
+            st.rerun()
                 
         df_general = pd.read_sql_query("SELECT id as [كود الصنف], name as [نوع التركيبة], general_price as [السعر الكلي (ج.م)] FROM products", conn)
         st.dataframe(df_general, use_container_width=True)
@@ -188,10 +187,10 @@ elif choice == "prices":
     
     with col_custom:
         st.markdown("### 🔄 2. تعديل السعر لطبيب معين (اختياري)")
-        if not list_docs or not list_products:
-            st.warning("يرجى إضافة طبيب وتركيبة أولاً لتتمكن من التعديل.")
-        else:
-            target_doc = st.selectbox("اختر الطبيب", list_docs)
-            target_prod = st.selectbox("اختر التركيبة", list_products)
-            custom_rate = st.number_input("السعر المعدل الخاص بهذا الطبيب (ج.م)", min_value=0.0, step=50.0)
-            if st.button("💾 تطبيق التعديل وتثبيت السعر الخاص"):
+        target_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء"])
+        target_prod = st.selectbox("اختر التركيبة", list_products if list_products else ["لا يوجد تركيبات"])
+        custom_rate = st.number_input("السعر المعدل الخاص بهذا الطبيب (ج.م)", min_value=0.0, step=50.0)
+        
+        if st.button("💾 تطبيق السعر الخاص"):
+            cursor.execute("INSERT OR REPLACE INTO doctor_prices (doctor_name, product_name, custom_price) VALUES (?, ?, ?)", (target_doc, target_prod, custom_rate))
+            conn.commit()
