@@ -133,18 +133,17 @@ if role in ["Admin", "Accountant"]:
     col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.م")
     st.markdown("---")
 
-    # بناء التبويبات حسب نوع الصلاحية
-    tabs_list = ["📋 الحالات", "👨‍⚕️ الأطباء", "🧑‍🏭 الفنيين", "⚙️ الأسعار", "💸 المقبوضات", "📊 التقارير والفواتير"]
+    # بناء التبويبات الموحدة في سطر واحد لمنع أخطاء الـ Indentation
     if role == "Admin":
-        tabs_list.append("🔐 إدارة المستخدمين")
+        t1, t2, t3, t4, t5, t6, t7 = st.tabs(["📋 الحالات", "👨‍⚕️ الأطباء", "🧑‍🏭 الفنيين", "⚙️ الأسعار", "💸 المقبوضات", "📊 التقارير", "🔐 المستخدمين"])
+    else:
+        t1, t2, t3, t4, t5, t6 = st.tabs(["📋 الحالات", "👨‍⚕️ الأطباء", "🧑‍🏭 الفنيين", "⚙️ الأسعار", "💸 المقبوضات", "📊 التقارير"])
         
-    tabs = st.tabs(tabs_list)
-    
     # تبويب الحالات
-    with tabs[0]:
+    with t1:
         st.subheader("تسجيل حالة جديدة وتحديد الفني")
         if not list_docs or not dict_products or not dict_techs:
-            st.warning("⚠️ يرجى التأكد من تهيئة الأطباء، التركيبات، والفنيين أولاً من التبويبات الخاصة بهم.")
+            st.warning("⚠️ يرجى التأكد من تهيئة الأطباء، التركيبات، والفنيين أولاً.")
         else:
             with st.form("case_form_admin", clear_on_submit=True):
                 selected_doc = st.selectbox("اختر الطبيب", list_docs)
@@ -168,7 +167,7 @@ if role in ["Admin", "Accountant"]:
                         st.rerun()
 
     # تبويب الأطباء
-    with tabs[1]:
+    with t2:
         st.subheader("👨‍⚕️ دليل عيادات الأسنان")
         with st.form("doc_form", clear_on_submit=True):
             new_doc = st.text_input("اسم الطبيب الجديد")
@@ -186,7 +185,7 @@ if role in ["Admin", "Accountant"]:
         st.dataframe(df_docs, use_container_width=True)
 
     # تبويب الفنيين
-    with tabs[2]:
+    with t3:
         st.subheader("🧑‍🏭 إدارة الفنيين وحساب عمولاتهم")
         with st.form("tech_form", clear_on_submit=True):
             t_name = st.text_input("اسم الفني الجديد")
@@ -208,7 +207,7 @@ if role in ["Admin", "Accountant"]:
         st.dataframe(df_tech_report, use_container_width=True)
 
     # تبويب الأسعار
-    with tabs[3]:
+    with t4:
         st.subheader("⚙️ قائمة أسعار خدمات المعمل")
         if role == "Admin":
             with st.form("product_form", clear_on_submit=True):
@@ -223,4 +222,3 @@ if role in ["Admin", "Accountant"]:
                             st.rerun()
                         except sqlite3.IntegrityError:
                             st.error("مضافة بالفعل!")
-        else:
