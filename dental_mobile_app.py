@@ -63,28 +63,28 @@ st.write("الإصدار الاحترافي المطوّر - تحكم كامل �
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
 cursor.execute("SELECT name FROM doctors")
-list_docs = [r[0] for r in cursor.fetchall()]
+list_docs = [r for r in cursor.fetchall()]
 
 cursor.execute("SELECT name FROM products")
-list_products = [r[0] for r in cursor.fetchall()]
+list_products = [r for r in cursor.fetchall()]
 
 cursor.execute("SELECT name, default_commission FROM technicians")
-dict_techs = {r[0]: r[1] for r in cursor.fetchall()}
+dict_techs = {r: r for r in cursor.fetchall()}
 
 # --- حساب وعرض الماليّات العامة للمعمل بالأعلى ---
 total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
 try:
     cursor.execute("SELECT SUM(price) FROM cases")
     res_sales = cursor.fetchone()
-    total_sales = float(res_sales[0]) if res_sales and res_sales[0] is not None else 0.0
+    total_sales = float(res_sales) if res_sales and res_sales is not None else 0.0
 
     cursor.execute("SELECT SUM(amount_paid) FROM payments")
     res_paid = cursor.fetchone()
-    total_paid = float(res_paid[0]) if res_paid and res_paid[0] is not None else 0.0
+    total_paid = float(res_paid) if res_paid and res_paid is not None else 0.0
 
     cursor.execute("SELECT SUM(tech_commission) FROM cases")
     res_tech = cursor.fetchone()
-    total_tech_commissions = float(res_tech[0]) if res_tech and res_tech[0] is not None else 0.0
+    total_tech_commissions = float(res_tech) if res_tech and res_tech is not None else 0.0
 except Exception:
     pass
 
@@ -113,12 +113,11 @@ st.markdown("---")
 # 1. شاشة إدارة الحالات
 if choice == "cases":
     st.subheader("📋 تسجيل وتعديل حالات المعمل اليومية")
-    
     st.markdown("### ➕ إضافة حالة جديدة")
     selected_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء مسجلين - اضغط على دليل الأطباء بالأعلى لإضافتهم"])
     patient = st.text_input("اسم المريض")
     selected_type = st.selectbox("نوع التركيبة", list_products if list_products else ["لا يوجد تركيبات - اضغط على كتالوج الأسعار بالأعلى لإضافتها"])
-    selected_tech = st.selectbox("الفني المسؤول عن الحالة", list(dict_techs.keys()) if dict_techs else ["لا يوجد فنيين - اضغط على حسابات الفنيين بالأعلى لإضافتهم"])
+    selected_tech = st.selectbox("الفني المسؤول عن الحالة", list(dict_techs.keys()) if dict_techs else ["لا يوجد Fنيين - اضغط على حسابات الفنيين بالأعلى لإضافتهم"])
     
     if st.button("💾 حفظ وتثبيت الحالة بالمعمل"):
         if not list_docs or not list_products or not dict_techs:
@@ -126,12 +125,12 @@ if choice == "cases":
         elif patient:
             cursor.execute("SELECT custom_price FROM doctor_prices WHERE doctor_name=? AND product_name=?", (selected_doc, selected_type))
             price_match = cursor.fetchone()
-            if price_match and price_match[0] is not None:
-                final_price = float(price_match[0])
+            if price_match and price_match is not None:
+                final_price = float(price_match)
             else:
                 cursor.execute("SELECT general_price FROM products WHERE name=?", (selected_type,))
                 general_match = cursor.fetchone()
-                final_price = float(general_match[0]) if general_match and general_match[0] is not None else 0.0
+                final_price = float(general_match) if general_match and general_match is not None else 0.0
             
             suggested_comm = dict_techs.get(selected_tech, 0.0)
             cursor.execute("INSERT INTO cases (doctor_name, patient_name, case_type, price, tech_name, tech_commission) VALUES (?, ?, ?, ?, ?, ?)",
@@ -151,13 +150,12 @@ if choice == "cases":
         if st.button("❌ حذف هذه الحالة وتعديل الحسابات ماليًا"):
             cursor.execute("DELETE FROM cases WHERE id=?", (int(case_to_delete),))
             conn.commit()
-            st.success("🎉 تم حذف الحالة وتحديث العدادات المالية بنجاح!")
+            st.success("🎉 تم حذف الحالة بنجاح!")
             st.rerun()
 
-# 2. شاشة دليل الأطباء (تعديل وحذف)
+# 2. شاشة دليل الأطباء
 elif choice == "doctors":
     st.subheader("👨‍⚕️ إدارة دليل عيادات الأسنان والعملاء")
-    
     new_doc = st.text_input("اسم الطبيب الجديد")
     phone_doc = st.text_input("رقم هاتف العيادة")
     if st.button("💾 إضافة الطبيب ونشره بالنظام"):
@@ -193,10 +191,10 @@ elif choice == "doctors":
                 cursor.execute("DELETE FROM doctors WHERE name=?", (doc_to_manage,))
                 cursor.execute("DELETE FROM doctor_prices WHERE doctor_name=?", (doc_to_manage,))
                 conn.commit()
-                st.success("🗑️ تم حذف الطبيب وكافة أسعاره المخصصة بنجاح!")
+                st.success("🗑️ تم حذف الطبيب بنجاح!")
                 st.rerun()
 
-# 3. شاشة كتالوج الأسعار والخصومات (تعديل وحذف للأسعار العامة والخاصة)
+# 3. شاشة كتالوج الأسعار والخصومات
 elif choice == "prices":
     st.subheader("⚙️ كتالوج الأسعار الكلية وتعديلات أسعار الأطباء")
     col_general, col_custom = st.columns(2)
@@ -219,3 +217,5 @@ elif choice == "prices":
             prod_to_del = st.selectbox("اختر تركيبة لحذفها نهائياً:", list_products)
             if st.button("❌ حذف التركيبة من الكتالوج"):
                 cursor.execute("DELETE FROM products WHERE name=?", (prod_to_del,))
+                cursor.execute("DELETE FROM doctor_prices WHERE product_name=?", (prod_to_del,))
+                conn.commit()
