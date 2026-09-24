@@ -27,28 +27,28 @@ st.write("الإصدار الاحترافي المستقر الشامل - مبي
 
 # جلب قوائم البيانات كـ نصوص صافية ومسطحة تماماً 100% لكسر تجميد السيرفر
 cursor.execute("SELECT name FROM doctors")
-list_docs = [r[0] for r in cursor.fetchall() if r]
+list_docs = [r for r in cursor.fetchall() if r]
 
 cursor.execute("SELECT name FROM products")
-list_products = [r[0] for r in cursor.fetchall() if r]
+list_products = [r for r in cursor.fetchall() if r]
 
 cursor.execute("SELECT name FROM technicians")
-list_techs_dropdown = [r[0] for r in cursor.fetchall() if r]
+list_techs_dropdown = [r for r in cursor.fetchall() if r]
 
 # --- حساب وعرض الماليّات العامة للمعمل بالأعلى ---
 total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
 try:
     cursor.execute("SELECT SUM(price) FROM cases")
     res_sales = cursor.fetchone()
-    total_sales = float(res_sales[0]) if res_sales and res_sales[0] is not None else 0.0
+    total_sales = float(res_sales) if res_sales and res_sales is not None else 0.0
 
     cursor.execute("SELECT SUM(amount_paid) FROM payments")
     res_paid = cursor.fetchone()
-    total_paid = float(res_paid[0]) if res_paid and res_paid[0] is not None else 0.0
+    total_paid = float(res_paid) if res_paid and res_paid is not None else 0.0
 
     cursor.execute("SELECT SUM(tech_commission) FROM cases")
     res_tech = cursor.fetchone()
-    total_tech_commissions = float(res_tech[0]) if res_tech and res_tech[0] is not None else 0.0
+    total_tech_commissions = float(res_tech) if res_tech and res_tech is not None else 0.0
 except Exception:
     pass
 
@@ -91,16 +91,16 @@ if choice == "cases":
         elif patient:
             cursor.execute("SELECT custom_price FROM doctor_prices WHERE doctor_name=? AND product_name=?", (selected_doc, selected_type))
             price_match = cursor.fetchone()
-            if price_match and price_match[0] is not None:
-                final_price = float(price_match[0])
+            if price_match and price_match is not None:
+                final_price = float(price_match)
             else:
                 cursor.execute("SELECT general_price FROM products WHERE name=?", (selected_type,))
                 general_match = cursor.fetchone()
-                final_price = float(general_match[0]) if general_match and general_match[0] is not None else 0.0
+                final_price = float(general_match) if general_match and general_match is not None else 0.0
             
             cursor.execute("SELECT default_commission FROM technicians WHERE name=?", (selected_tech,))
             comm_match = cursor.fetchone()
-            suggested_comm = float(comm_match[0]) if comm_match and comm_match[0] is not None else 0.0
+            suggested_comm = float(comm_match) if comm_match and comm_match is not None else 0.0
             
             cursor.execute("INSERT INTO cases (doctor_name, patient_name, case_type, price, tech_name, tech_commission) VALUES (?, ?, ?, ?, ?, ?)",
                            (selected_doc, patient, selected_type, final_price, selected_tech, suggested_comm))
@@ -188,7 +188,7 @@ elif choice == "payments":
         else:
             st.error("يرجى التأكد من كتابة اسم الطبيب وإدخال مبلغ أكبر من صفر.")
 
-# 6. شاشة التقارير وتنزيل فواتير الـ PDF
+# 6. شاشة التقارير وتنزيل فواتير الـ PDF (تم ضبط المحاذاة والمسافات البرمجية بالكامل مئة بالمئة)
 elif choice == "reports":
     st.subheader("📊 الفواتير وحالات المعمل الشاملة وطباعة الـ PDF")
     cursor.execute("SELECT id, doctor_name, patient_name, case_type, price FROM cases ORDER BY id DESC")
