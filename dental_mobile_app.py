@@ -42,7 +42,20 @@ cursor.execute('''
     )''')
 conn.commit()
 
-# --- نظام تسجيل الدخول المحمي والصارم مئة بالمئة ---
+# الترقية التلقائية لحساب المدير الأول
+cursor.execute("SELECT COUNT(*) FROM users WHERE username='admin'")
+if cursor.fetchone()[0] == 0:
+    cursor.execute("INSERT INTO users (username, password, role) VALUES ('admin', '1234', 'Admin')")
+    conn.commit()
+
+try:
+    cursor.execute("ALTER TABLE cases ADD COLUMN tech_name TEXT")
+    cursor.execute("ALTER TABLE cases ADD COLUMN tech_commission REAL DEFAULT 0.0")
+    conn.commit()
+except sqlite3.OperationalError:
+    pass
+
+# --- نظام تسجيل الدخول والصلاحيات ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['user_role'] = None
@@ -54,7 +67,6 @@ if not st.session_state['logged_in']:
     password_input = st.text_input("كلمة المرور", type="password").strip()
     
     if st.button("دخول للنظام"):
-        # التحقق المباشر والمحمي للحساب الرئيسي لضمان الدخول الفوري دون أخطاء داتابيز
         if username_input == "admin" and password_input == "1234":
             st.session_state['logged_in'] = True
             st.session_state['user_role'] = "Admin"
@@ -62,7 +74,6 @@ if not st.session_state['logged_in']:
             st.success("تم التحقق بنجاح! جاري تحميل النظام...")
             st.rerun()
         else:
-            # التحقق من بقية الموظفين المسجلين في الداتابيز
             cursor.execute("SELECT role FROM users WHERE username=? AND password=?", (username_input, password_input))
             user_match = cursor.fetchone()
             if user_match:
@@ -73,6 +84,7 @@ if not st.session_state['logged_in']:
                 st.rerun()
             else:
                 st.error("⚠️ اسم المستخدم أو كلمة المرور غير صحيحة!")
+    st.info("💡 حساب المدير الافتراضي الحالي للدخول: اسم المستخدم: admin | الباسورد: 1234")
     st.stop()
 
 # شريط جانبي لعرض معلومات المستخدم وزر تسجيل الخروج
@@ -149,15 +161,26 @@ col2.metric("💳 ديون الأطباء", f"{remaining_debts:,.2f} ج.م")
 col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.م")
 st.markdown("---")
 
-# تصميم القائمة العريضة
-menu_options = ["📋 إدارة الحالات", "👨‍⚕️ دليل الأطباء", "🧑‍🏭 حسابات الفنيين", "⚙️ كتالوج الأسعار", "💸 تسجيل المقبوضات", "📊 التقارير والفواتير"]
+# استخدام نصوص صافية تماماً بدون رموز تعبيرية لمنع أي مشكلة في السيرفر
+menu_options = ["cases", "doctors", "technicians", "prices", "payments", "reports"]
 if current_role == "Admin":
-    menu_options.append("👤 إضافة مستخدم جديد")
+    menu_options.append("users")
 
-choice = st.radio("⬇️ اختر الشاشة المطلوبة لعرض خياراتها بالكامل:", menu_options, horizontal=True)
+# عرض قائمة اختيار عريضة ومفهومة للمستخدم
+choice_display = {
+    "cases": "📋 إدارة الحالات",
+    "doctors": "👨‍⚕️ دليل الأطباء",
+    "technicians": "🧑‍🏭 حسابات الفنيين",
+    "prices": "⚙️ كتالوج الأسعار",
+    "payments": "💸 تسجيل المقبوضات",
+    "reports": "📊 التقارير والفواتير",
+    "users": "👤 إضافة مستخدم جديد"
+}
+
+choice = st.radio("⬇️ اختر الشاشة المطلوبة لعرض خياراتها بالكامل:", menu_options, format_func=lambda x: choice_display[x], horizontal=True)
 st.markdown("---")
 
-if choice == "📋 إدارة الحالات":
+if choice == "cases":
     st.subheader("تسجيل حالة جديدة وتحديد الفني")
     if not list_docs or not dict_products or not dict_techs:
         st.warning("⚠️ يرجى إضافة أطباء، تركيبات، وفنيين أولاً لتفعيل الشاشة.")
@@ -183,7 +206,7 @@ if choice == "📋 إدارة الحالات":
                     st.success("✅ تم حفظ وفحص الطلب ماليًا بنجاح!")
                     st.rerun()
 
-elif choice == "👨‍⚕️ دليل الأطباء":
+elif choice == "doctors":
     st.subheader("👨‍⚕️ دليل عيادات الأسنان والعملاء")
     with st.form("doc_form", clear_on_submit=True):
         new_doc = st.text_input("اسم الطبيب الجديد")
@@ -200,18 +223,7 @@ elif choice == "👨‍⚕️ دليل الأطباء":
     df_docs = pd.read_sql_query("SELECT name as [اسم الطبيب], phone as [الهاتف] FROM doctors", conn)
     st.dataframe(df_docs, use_container_width=True)
 
-elif choice == "🧑‍🏭 حسابات الفنيين":
+elif choice == "technicians":
     st.subheader("🧑‍🏭 إدارة الفنيين وحساب عمولاتهم")
     with st.form("tech_form", clear_on_submit=True):
         t_name = st.text_input("اسم الفني الجديد")
-        t_spec = st.text_input("التخصص")
-        t_comm = st.number_input("قيمة العموله الافتراضية لكل سن (ج.م)", min_value=0.0, step=10.0)
-        if st.form_submit_button("تسجيل الفني بالمعمل"):
-            if t_name:
-                try:
-                    cursor.execute("INSERT INTO technicians (name, specialty, default_commission) VALUES (?, ?, ?)", (t_name, t_spec, t_comm))
-                    conn.commit()
-                    st.success("🎉 تم تسجيل الفني بنجاح!")
-                    st.rerun()
-                except sqlite3.IntegrityError:
-                    st.error("هذا الفني مسجل مسبقاً!")
