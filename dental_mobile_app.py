@@ -9,7 +9,7 @@ from reportlab.lib.units import inch
 # إعداد الصفحة لتناسب شاشة الآيفون والموبايل والكمبيوتر
 st.set_page_config(page_title="معمل الأسنان المحترف", layout="centered", page_icon="🦷")
 
-# الاتصال بقاعدة البيانات بملف بكر ونظيف تماماً لتخطي أي تجميد سابق
+# الاتصال بقاعدة البيانات بملف بكر ونظيف تماماً
 conn = sqlite3.connect('dental_lab_final_system_2026.db', check_same_thread=False)
 cursor = conn.cursor()
 
@@ -23,7 +23,7 @@ cursor.execute("CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTO
 conn.commit()
 
 st.title("🦷 معمل الأسنان الذكي")
-st.write("الإصدار الاحترافي المستقر الشامل - تحكم كامل بالمدخلات بالجنيه المصري")
+st.write("الإصدار الاحترافي المستقر الشامل - مبيعات وعمولات بالجنيه المصري")
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً بنصوص صريحة ومسطحة
 cursor.execute("SELECT name FROM doctors")
@@ -107,18 +107,6 @@ if choice == "cases":
             st.rerun()
         else:
             st.error("يرجى كتابة اسم المريض")
-            
-    st.markdown("---")
-    st.markdown("### 🗑️ لوحة حذف الحالات المسجلة بالخطأ")
-    df_cases_edit = pd.read_sql_query("SELECT id as [كود الحالة], doctor_name as [الطبيب], patient_name as [المريض], case_type as [التركيبة], price as [الحساب (ج.م)] FROM cases ORDER BY id DESC", conn)
-    st.dataframe(df_cases_edit, use_container_width=True)
-    if not df_cases_edit.empty:
-        case_to_delete = st.selectbox("اختر كود الحالة المراد حذفها نهائياً:", df_cases_edit["كود الحالة"])
-        if st.button("❌ حذف هذه الحالة وتعديل الحسابات"):
-            cursor.execute("DELETE FROM cases WHERE id=?", (int(case_to_delete),))
-            conn.commit()
-            st.success("🎉 تم حذف الحالة بنجاح!")
-            st.rerun()
 
 # 2. شاشة دليل الأطباء
 elif choice == "doctors":
@@ -136,30 +124,6 @@ elif choice == "doctors":
                 st.error("هذا الطبيب مسجل مسبقاً!")
         else:
             st.error("برجاء إدخال اسم الطبيب أولاً!")
-            
-    st.markdown("---")
-    st.markdown("### 🔄 لوحة التعديل والحذف للأطباء")
-    df_docs = pd.read_sql_query("SELECT id as [كود الطبيب], name as [اسم الطبيب], phone as [الهاتف] FROM doctors", conn)
-    st.dataframe(df_docs, use_container_width=True)
-    
-    if list_docs:
-        doc_to_manage = st.selectbox("اختر اسم الطبيب المراد تعديله أو حذفه:", list_docs)
-        edit_phone = st.text_input("اكتب رقم الهاتف الجديد للطبيب لتعديله:")
-        
-        col_edit_doc, col_del_doc = st.columns(2)
-        with col_edit_doc:
-            if st.button("🔄 حفظ تعديل هاتف الطبيب"):
-                cursor.execute("UPDATE doctors SET phone=? WHERE name=?", (edit_phone, doc_to_manage))
-                conn.commit()
-                st.success("✅ تم تحديث بيانات الطبيب بنجاح!")
-                st.rerun()
-        with col_del_doc:
-            if st.button("❌ حذف هذا الطبيب نهائياً من الدفاتر"):
-                cursor.execute("DELETE FROM doctors WHERE name=?", (doc_to_manage,))
-                cursor.execute("DELETE FROM doctor_prices WHERE doctor_name=?", (doc_to_manage,))
-                conn.commit()
-                st.success("🗑️ تم حذف الطبيب بنجاح!")
-                st.rerun()
 
 # 3. شاشة كتالوج الأسعار والخصومات
 elif choice == "prices":
@@ -176,18 +140,6 @@ elif choice == "prices":
                 conn.commit()
                 st.success("✅ تم تحديث السعر العام!")
                 st.rerun()
-                
-        df_general = pd.read_sql_query("SELECT id as [كود الصنف], name as [نوع التركيبة], general_price as [السعر الكلي (ج.م)] FROM products", conn)
-        st.dataframe(df_general, use_container_width=True)
-        
-        if list_products:
-            prod_to_del = st.selectbox("اختر تركيبة لحذفها نهائياً:", list_products)
-            if st.button("❌ حذف التركيبة من الكتالوج"):
-                cursor.execute("DELETE FROM products WHERE name=?", (prod_to_del,))
-                cursor.execute("DELETE FROM doctor_prices WHERE product_name=?", (prod_to_del,))
-                conn.commit()
-                st.success("🗑️ تم حذف الصنف كلياً!")
-                st.rerun()
     
     with col_custom:
         st.markdown("### 🔄 2. تعديل السعر لطبيب معين (اختياري)")
@@ -195,3 +147,53 @@ elif choice == "prices":
         target_prod = st.selectbox("اختر التركيبة", list_products if list_products else ["لا يوجد تركيبات"])
         custom_rate = st.number_input("السعر المعدل الخاص بهذا الطبيب (ج.م)", min_value=0.0, step=50.0)
         
+        if st.button("💾 تطبيق السعر الخاص"):
+            cursor.execute("INSERT OR REPLACE INTO doctor_prices (doctor_name, product_name, custom_price) VALUES (?, ?, ?)", (target_doc, target_prod, custom_rate))
+            conn.commit()
+            st.success("🎉 تم تخصيص السعر المخصص بنجاح!")
+            st.rerun()
+
+# 4. شاشة حسابات الفنيين الصافية والحرّة والمضمونة الظهور بنسبة 1000%
+elif choice == "technicians":
+    st.subheader("🧑‍🏭 إدارة الفنيين وتعديل موازنتهم")
+    st.markdown("### ➕ تسجيل فني جديد")
+    t_name_input = st.text_input("اسم الفني الجديد")
+    t_spec_input = st.text_input("التخصص (مثال: بورسلين)")
+    t_comm_input = st.number_input("قيمة العموله الافتراضية للفني لكل سن (ج.م)", min_value=0.0, step=10.0)
+    
+    if st.button("💾 تسجيل وحفظ الفني بالمعمل"):
+        if t_name_input:
+            try:
+                cursor.execute("INSERT INTO technicians (name, specialty, default_commission) VALUES (?, ?, ?)", (t_name_input, t_spec_input, t_comm_input))
+                conn.commit()
+                st.success(f"🎉 تم حفظ بيانات الفني {t_name_input} بنجاح!")
+                st.rerun()
+            except sqlite3.IntegrityError:
+                st.error("⚠️ هذا الفني مسجل مسبقاً في الدفاتر!")
+        else:
+            st.error("⚠️ يرجى كتابة اسم الفني أولاً")
+
+# 5. شاشة تسجيل المقبوضات
+elif choice == "payments":
+    st.subheader("💸 استلام وتعديل دفعات الأطباء النقدية")
+    pay_doc = st.selectbox("اختر الطبيب المسدد", list_docs) if list_docs else st.text_input("اكتب اسم الطبيب المسدد يدوياً")
+    amt = st.number_input("المبلغ المستلم نقداً أو تحويل (ج.م)", min_value=0.0, step=100.0)
+    if st.button("💾 تسجيل السند وتحديث الخزنة"):
+        if pay_doc and amt > 0:
+            cursor.execute("INSERT INTO payments (doctor_name, amount_paid) VALUES (?, ?)", (pay_doc, amt))
+            conn.commit()
+            st.success(f"✅ تم تسجيل دفعة بقيمة {amt:,.2f} ج.م للطبيب {pay_doc} بنجاح!")
+            st.rerun()
+        else:
+            st.error("يرجى التأكد من كتابة اسم الطبيب وإدخال مبلغ أكبر من صفر.")
+
+# 6. شاشة التقارير وتنزيل فواتير الـ PDF
+elif choice == "reports":
+    st.subheader("📊 الفواتير وحالات المعمل الشاملة وطباعة الـ PDF")
+    cursor.execute("SELECT id, doctor_name, patient_name, case_type, price FROM cases ORDER BY id DESC")
+    all_cases_data = cursor.fetchall()
+    if all_cases_data:
+        unique_docs_filter = ["الكل"] + list_docs
+        selected_filter_doc = st.selectbox("🔍 تصفية الحالات باسم طبيب محدد:", unique_docs_filter)
+        for case in all_cases_data:
+            c_id, c_doc, c_pat, c_type, c_price = case
