@@ -44,7 +44,7 @@ conn.commit()
 
 # الترقية التلقائية لحساب المدير الأول
 cursor.execute("SELECT COUNT(*) FROM users WHERE username='admin'")
-if cursor.fetchone() == 0:
+if cursor.fetchone()[0] == 0:
     cursor.execute("INSERT INTO users (username, password, role) VALUES ('admin', '1234', 'Admin')")
     conn.commit()
 
@@ -71,7 +71,8 @@ if not st.session_state['logged_in']:
         user_match = cursor.fetchone()
         if user_match:
             st.session_state['logged_in'] = True
-            st.session_state['user_role'] = str(user_match).strip()
+            # تنظيف النص المسترجع لضمان عدم حدوث حجب برمي
+            st.session_state['user_role'] = str(user_match[0]).strip()
             st.session_state['username'] = username_input
             st.success("تم التحقق بنجاح! جاري تحميل النظام...")
             st.rerun()
@@ -94,18 +95,18 @@ st.title("🦷 نظام معمل الأسنان الذكي")
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
 cursor.execute("SELECT name FROM doctors")
-list_docs = [r for r in cursor.fetchall()]
+list_docs = [r[0] for r in cursor.fetchall()]
 
 cursor.execute("SELECT name, price FROM products")
-dict_products = {r: r for r in cursor.fetchall()}
+dict_products = {r[0]: r[1] for r in cursor.fetchall()}
 
 cursor.execute("SELECT name, default_commission FROM technicians")
-dict_techs = {r: r for r in cursor.fetchall()}
+dict_techs = {r[0]: r[1] for r in cursor.fetchall()}
 
-role = st.session_state['user_role']
+current_role = st.session_state['user_role']
 
 # تصفية الشاشات بالكامل وعزل صلاحيات الموظف (Staff)
-if role == "Staff":
+if current_role == "Staff":
     st.info("🔒 وضع إدخال البيانات المحدود")
     st.subheader("📋 تسجيل حالة جديدة بالمعمل")
     if not list_docs or not dict_products or not dict_techs:
@@ -130,20 +131,20 @@ if role == "Staff":
     conn.close()
     st.stop()
 
-# --- بقية الواجهات الخاصة بـ (Admin و Accountant) ---
+# --- بقية الواجهات المشتركة الخاصة بـ (Admin و Accountant) ---
 total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
 try:
     cursor.execute("SELECT SUM(price) FROM cases")
     res_sales = cursor.fetchone()
-    total_sales = float(res_sales) if res_sales and res_sales is not None else 0.0
+    total_sales = float(res_sales[0]) if res_sales and res_sales[0] is not None else 0.0
 
     cursor.execute("SELECT SUM(amount_paid) FROM payments")
     res_paid = cursor.fetchone()
-    total_paid = float(res_paid) if res_paid and res_paid is not None else 0.0
+    total_paid = float(res_paid[0]) if res_paid and res_paid[0] is not None else 0.0
 
     cursor.execute("SELECT SUM(tech_commission) FROM cases")
     res_tech = cursor.fetchone()
-    total_tech_commissions = float(res_tech) if res_tech and res_tech is not None else 0.0
+    total_tech_commissions = float(res_tech[0]) if res_tech and res_tech[0] is not None else 0.0
 except Exception:
     pass
 
@@ -155,8 +156,8 @@ col2.metric("💳 ديون الأطباء", f"{remaining_debts:,.2f} ج.م")
 col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.م")
 st.markdown("---")
 
-# بناء التبويبات الموحدة والأيقونة المطلوبة (👤 إضافة مستخدم جديد)
-if role == "Admin":
+# بناء التبويبات الموحدة في مصفوفة واحدة حرة ومفتوحة دائماً للمديرين لمنع أي حجب
+if current_role == "Admin":
     t1, t2, t3, t4, t5, t6, t7 = st.tabs(["📋 الحالات", "👨‍⚕️ الأطباء", "🧑‍🏭 الفنيين", "⚙️ الأسعار", "💸 المقبوضات", "📊 التقارير", "👤 إضافة مستخدم جديد"])
 else:
     t1, t2, t3, t4, t5, t6 = st.tabs(["📋 الحالات", "👨‍⚕️ الأطباء", "🧑‍🏭 الفنيين", "⚙️ الأسعار", "💸 المقبوضات", "📊 التقارير"])
@@ -219,4 +220,3 @@ with t3:
                     st.rerun()
                 except sqlite3.IntegrityError:
                     st.error("هذا الفني مسجل مسبقاً!")
-    df_tech_report = pd.read_sql_query("SELECT tech_name as [اسم الفني], COUNT(id) as [عدد الحالات], SUM(tech_commission) as [إجمالي المستحقات (ج.م)] FROM cases WHERE tech_name IS NOT NULL GROUP BY tech_name", conn)
