@@ -44,6 +44,7 @@ cursor.execute('''
     )''')
 conn.commit()
 
+# --- ترقية تلقائية وذكية لقاعدة البيانات لمنع خطأ الـ OperationalError الشاش بالأعلى ---
 try:
     cursor.execute("ALTER TABLE cases ADD COLUMN tech_name TEXT")
     cursor.execute("ALTER TABLE cases ADD COLUMN tech_commission REAL DEFAULT 0.0")
@@ -51,7 +52,13 @@ try:
 except sqlite3.OperationalError:
     pass
 
-st.title("🦷 نظام معمل الأسنان الذكي")
+try:
+    cursor.execute("ALTER TABLE products ADD COLUMN general_price REAL DEFAULT 0.0")
+    conn.commit()
+except sqlite3.OperationalError:
+    pass
+
+st.title("🦷 system معمل الأسنان الذكي")
 st.write("الإصدار المفتوح الشامل - مبيعات وعمولات وفواتير بالجنيه المصري")
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
@@ -86,7 +93,7 @@ remaining_debts = total_sales - total_paid
 col1, col2, col3 = st.columns(3)
 col1.metric("💰 إجمالي المبيعات", f"{total_sales:,.2f} ج.م")
 col2.metric("💳 ديون الأطباء", f"{remaining_debts:,.2f} ج.م")
-col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.m")
+col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.م")
 st.markdown("---")
 
 # تصميم الأزرار العريضة للتنقل الفوري والسلس
@@ -205,7 +212,3 @@ elif choice == "prices":
 
 # 4. شاشة حسابات الفنيين
 elif choice == "technicians":
-    st.subheader("🧑‍🏭 إدارة الفنيين وحساب عمولاتهم")
-    with st.form("tech_form_free", clear_on_submit=True):
-        t_name = st.text_input("اسم الفني الجديد")
-        t_spec = st.text_input("التخصص")
