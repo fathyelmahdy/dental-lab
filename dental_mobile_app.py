@@ -13,7 +13,7 @@ st.set_page_config(page_title="معمل الأسنان المحترف", layout="
 conn = sqlite3.connect('dental_lab_advanced_mobile.db', check_same_thread=False)
 cursor = conn.cursor()
 
-# إنشاء وتحديث الجداول المترابطة (جدول المنتجات يشمل السعر العام وجدول منفصل للأسعار الخاصة)
+# إنشاء وتحديث الجداول المترابطة
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS doctors (
         id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, phone TEXT
@@ -44,33 +44,40 @@ cursor.execute('''
     )''')
 conn.commit()
 
-st.title("🦷 نظام معمل الأسنان الذكي")
-st.write("إصدار الأسعار الكلية والتعديلات المخصصة للأطباء")
+try:
+    cursor.execute("ALTER TABLE cases ADD COLUMN tech_name TEXT")
+    cursor.execute("ALTER TABLE cases ADD COLUMN tech_commission REAL DEFAULT 0.0")
+    conn.commit()
+except sqlite3.OperationalError:
+    pass
 
-# جلب قوائم البيانات لملء الخيارات المنسدلة
+st.title("🦷 نظام معمل الأسنان الذكي")
+st.write("الإصدار المفتوح الشامل - مبيعات وعمولات وفواتير بالجنيه المصري")
+
+# جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
 cursor.execute("SELECT name FROM doctors")
-list_docs = [r[0] for r in cursor.fetchall()]
+list_docs = [r for r in cursor.fetchall()]
 
 cursor.execute("SELECT name FROM products")
-list_products = [r[0] for r in cursor.fetchall()]
+list_products = [r for r in cursor.fetchall()]
 
 cursor.execute("SELECT name, default_commission FROM technicians")
-dict_techs = {r[0]: r[1] for r in cursor.fetchall()}
+dict_techs = {r: r for r in cursor.fetchall()}
 
 # --- حساب وعرض الماليّات العامة للمعمل بالأعلى ---
 total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
 try:
     cursor.execute("SELECT SUM(price) FROM cases")
     res_sales = cursor.fetchone()
-    total_sales = float(res_sales[0]) if res_sales and res_sales[0] is not None else 0.0
+    total_sales = float(res_sales) if res_sales and res_sales is not None else 0.0
 
     cursor.execute("SELECT SUM(amount_paid) FROM payments")
     res_paid = cursor.fetchone()
-    total_paid = float(res_paid[0]) if res_paid and res_paid[0] is not None else 0.0
+    total_paid = float(res_paid) if res_paid and res_paid is not None else 0.0
 
     cursor.execute("SELECT SUM(tech_commission) FROM cases")
     res_tech = cursor.fetchone()
-    total_tech_commissions = float(res_tech[0]) if res_tech and res_tech[0] is not None else 0.0
+    total_tech_commissions = float(res_tech) if res_tech and res_tech is not None else 0.0
 except Exception:
     pass
 
@@ -82,7 +89,7 @@ col2.metric("💳 ديون الأطباء", f"{remaining_debts:,.2f} ج.م")
 col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.م")
 st.markdown("---")
 
-# تصميم القائمة العريضة كخيارات راديو واضحة للتنقل الفوري
+# تصميم القائمة العريضة كخيارات راديو واضحة جداً وكبيرة للتنقل الفوري
 menu_options = ["cases", "doctors", "prices", "technicians", "payments", "reports"]
 
 choice_display = {
@@ -97,14 +104,13 @@ choice_display = {
 choice = st.radio("⬇️ اختر الشاشة المطلوبة لعرض خياراتها بالكامل:", menu_options, format_func=lambda x: choice_display[x], horizontal=True)
 st.markdown("---")
 
-# 1. شاشة إدارة الحالات (تسجيل الحالات السريع)
 if choice == "cases":
     st.subheader("تسجيل حالة جديدة بالمعمل")
     with st.form("case_form_free", clear_on_submit=True):
-        selected_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء مسجلين - اضغط على دليل الأطباء لإضافتهم"])
+        selected_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء مسجلين - اضغط على دليل الأطباء بالأعلى لإضافتهم"])
         patient = st.text_input("اسم المريض")
-        selected_type = st.selectbox("نوع التركيبة", list_products if list_products else ["لا يوجد تركيبات - اضغط على كتالوج الأسعار لإضافتها"])
-        selected_tech = st.selectbox("الفني المسؤول عن الحالة", list(dict_techs.keys()) if dict_techs else ["لا يوجد فنيين - اضغط على حسابات الفنيين لإضافتهم"])
+        selected_type = st.selectbox("نوع التركيبة", list_products if list_products else ["لا يوجد تركيبات - اضغط على كتالوج الأسعار بالأعلى لإضافتها"])
+        selected_tech = st.selectbox("الفني المسؤول عن الحالة", list(dict_techs.keys()) if dict_techs else ["لا يوجد فنيين - اضغط على حسابات الفنيين بالأعلى لإضافتهم"])
         
         if st.form_submit_button("حفظ وتثبيت الحالة"):
             if not list_docs or not list_products or not dict_techs:
@@ -114,7 +120,7 @@ if choice == "cases":
                 cursor.execute("SELECT custom_price FROM doctor_prices WHERE doctor_name=? AND product_name=?", (selected_doc, selected_type))
                 price_match = cursor.fetchone()
                 
-                if price_match and price_match[0] is not None:
+                if price_match and price_match is not None:
                     final_price = float(price_match[0])
                 else:
                     # 2. إذا لم يوجد سعر خاص، يتم جلب السعر الكلي العام لكل الناس
@@ -132,7 +138,6 @@ if choice == "cases":
             else:
                 st.error("يرجى كتابة اسم المريض")
 
-# 2. شاشة دليل الأطباء
 elif choice == "doctors":
     st.subheader("👨‍⚕️ دليل عيادات الأسنان والعملاء")
     with st.form("doc_form_free", clear_on_submit=True):
@@ -152,10 +157,8 @@ elif choice == "doctors":
     df_docs = pd.read_sql_query("SELECT name as [اسم الطبيب], phone as [الهاتف] FROM doctors", conn)
     st.dataframe(df_docs, use_container_width=True)
 
-# 3. شاشة كتالوج الأسعار الكلية والأسعار المخصصة (بجانب بعضهما)
 elif choice == "prices":
     st.subheader("⚙️ كتالوج الأسعار الكلية وتعديلات أسعار الأطباء")
-    
     col_general, col_custom = st.columns(2)
     
     with col_general:
@@ -165,12 +168,13 @@ elif choice == "prices":
             p_price = st.number_input("السعر العام الكلي لكل الناس (ج.م)", min_value=0.0, step=50.0)
             if st.form_submit_button("حفظ في الكتالوج الكلي"):
                 if p_name and p_price > 0:
-                    cursor.execute("INSERT OR REPLACE INTO products (name, general_price) VALUES (?, ?)", (p_name, p_price))
-                    conn.commit()
-                    st.success("✅ تم حفظ التركيبة بالسعر العام!")
-                    st.rerun()
-        
-        # عرض الأسعار الكلية
+                    try:
+                        cursor.execute("INSERT OR REPLACE INTO products (name, general_price) VALUES (?, ?)", (p_name, p_price))
+                        conn.commit()
+                        st.success("✅ تم حفظ التركيبة بالسعر العام!")
+                        st.rerun()
+                    except sqlite3.IntegrityError:
+                        st.error("خطأ غير متوقع في الكتالوج!")
         df_general = pd.read_sql_query("SELECT name as [نوع التركيبة], general_price as [السعر الكلي العام (ج.م)] FROM products", conn)
         st.dataframe(df_general, use_container_width=True)
     
@@ -188,14 +192,11 @@ elif choice == "prices":
                         cursor.execute("INSERT OR REPLACE INTO doctor_prices (doctor_name, product_name, custom_price) VALUES (?, ?, ?)",
                                        (target_doc, target_prod, custom_rate))
                         conn.commit()
-                        st.success(f"🎉 تم تخصيص سعر {custom_rate:,.2f} ج.م للطبيب {target_doc}!")
+                        st.success(f"🎉 تم تخصيص السعر المخصص بنجاح!")
                         st.rerun()
-        
-        # عرض قائمة التعديلات الخاصة
         df_custom_rates = pd.read_sql_query("SELECT doctor_name as [الطبيب], product_name as [التركيبة], custom_price as [السعر المعدل (ج.م)] FROM doctor_prices", conn)
         st.dataframe(df_custom_rates, use_container_width=True)
 
-# 4. شاشة حسابات الفنيين
 elif choice == "technicians":
     st.subheader("🧑‍🏭 إدارة الفنيين وحساب عمولاتهم")
     with st.form("tech_form_free", clear_on_submit=True):
@@ -206,4 +207,3 @@ elif choice == "technicians":
             if t_name:
                 try:
                     cursor.execute("INSERT INTO technicians (name, specialty, default_commission) VALUES (?, ?, ?)", (t_name, t_spec, t_comm))
-                    conn.commit()
