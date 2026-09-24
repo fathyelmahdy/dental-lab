@@ -50,28 +50,28 @@ st.write("الإصدار المفتوح الشامل - مبيعات وعمولا
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
 cursor.execute("SELECT name FROM doctors")
-list_docs = [r[0] for r in cursor.fetchall()]
+list_docs = [r for r in cursor.fetchall()]
 
 cursor.execute("SELECT name, price FROM products")
-dict_products = {r[0]: r[1] for r in cursor.fetchall()}
+dict_products = {r: r for r in cursor.fetchall()}
 
 cursor.execute("SELECT name, default_commission FROM technicians")
-dict_techs = {r[0]: r[1] for r in cursor.fetchall()}
+dict_techs = {r: r for r in cursor.fetchall()}
 
 # --- حساب وعرض الماليّات العامة للمعمل بالأعلى ---
 total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
 try:
     cursor.execute("SELECT SUM(price) FROM cases")
     res_sales = cursor.fetchone()
-    total_sales = float(res_sales[0]) if res_sales and res_sales[0] is not None else 0.0
+    total_sales = float(res_sales) if res_sales and res_sales is not None else 0.0
 
     cursor.execute("SELECT SUM(amount_paid) FROM payments")
     res_paid = cursor.fetchone()
-    total_paid = float(res_paid[0]) if res_paid and res_paid[0] is not None else 0.0
+    total_paid = float(res_paid) if res_paid and res_paid is not None else 0.0
 
     cursor.execute("SELECT SUM(tech_commission) FROM cases")
     res_tech = cursor.fetchone()
-    total_tech_commissions = float(res_tech[0]) if res_tech and res_tech[0] is not None else 0.0
+    total_tech_commissions = float(res_tech) if res_tech and res_tech is not None else 0.0
 except Exception:
     pass
 
@@ -208,5 +208,5 @@ elif choice == "reports":
             c_id, c_doc, c_pat, c_type, c_price = case
             if selected_filter_doc != "الكل" and c_doc != selected_filter_doc:
                 continue
-            col_info, col_btn = st.columns()
+            col_info, col_btn = st.columns([3, 1])
             with col_info:
