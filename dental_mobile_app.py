@@ -23,7 +23,7 @@ cursor.execute("CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTO
 conn.commit()
 
 st.title("🦷 معمل الأسنان الذكي")
-st.write("الإصدار الاحترافي الشامل - تحكم كامل ومباشر بالتعديل والحذف لكافة البيانات")
+st.write("الإصدار الاحترافي المستقر الشامل - مبيعات وعمولات وتعديل فوري بالجنيه المصري")
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً بنصوص صريحة ومسطحة
 cursor.execute("SELECT name FROM doctors")
@@ -114,7 +114,7 @@ if choice == "cases":
     st.dataframe(df_cases_view, use_container_width=True)
     
     if not df_cases_view.empty:
-        case_to_delete = st.selectbox("اختر كود الحالة المراد حذفها نهائياً:", df_cases_edit_list := df_cases_view["كود الحالة"].tolist())
+        case_to_delete = st.selectbox("اختر كود الحالة المراد حذفها نهائياً:", df_cases_view["كود الحالة"].tolist())
         if st.button("❌ حذف هذه الحالة وتعديل الحسابات"):
             cursor.execute("DELETE FROM cases WHERE id=?", (int(case_to_delete),))
             conn.commit()
