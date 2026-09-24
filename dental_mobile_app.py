@@ -22,33 +22,53 @@ cursor.execute("CREATE TABLE IF NOT EXISTS cases (id INTEGER PRIMARY KEY AUTOINC
 cursor.execute("CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor_name TEXT, amount_paid REAL)")
 conn.commit()
 
+# دالة توليد الفواتير الـ PDF المستقلة تماماً خارج الحلقات التكرارية لمنع أخطاء المحاذاة
+def generate_invoice_pdf(case_id, doc, pat, ctype, price):
+    buffer = io.BytesIO()
+    p = canvas.Canvas(buffer, pagesize=letter)
+    p.setPageSize((6 * inch, 4 * inch))
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(0.5 * inch, 3.5 * inch, "DENTAL LAB INVOICE")
+    p.line(0.5 * inch, 3.3 * inch, 5.5 * inch, 3.3 * inch)
+    p.setFont("Helvetica", 10)
+    p.drawString(0.5 * inch, 2.9 * inch, f"Invoice Code: #{case_id}")
+    p.drawString(0.5 * inch, 2.5 * inch, f"Doctor: {doc}")
+    p.drawString(0.5 * inch, 2.1 * inch, f"Patient: {pat}")
+    p.drawString(0.5 * inch, 1.7 * inch, f"Type: {ctype}")
+    p.line(0.5 * inch, 1.4 * inch, 5.5 * inch, 1.4 * inch)
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(0.5 * inch, 1.0 * inch, f"Total Price: {price:,.2f} EGP")
+    p.showPage()
+    p.save()
+    return buffer.getvalue()
+
 st.title("🦷 معمل الأسنان الذكي")
 st.write("الإصدار الاحترافي المستقر الشامل - مبيعات وعمولات وتعديل فوري بالجنيه المصري")
 
 # جلب قوائم البيانات كـ نصوص صافية ومسطحة تماماً 100% لكسر تجميد السيرفر
 cursor.execute("SELECT name FROM doctors")
-list_docs = [r for r in cursor.fetchall() if r]
+list_docs = [r[0] for r in cursor.fetchall() if r]
 
 cursor.execute("SELECT name FROM products")
-list_products = [r for r in cursor.fetchall() if r]
+list_products = [r[0] for r in cursor.fetchall() if r]
 
 cursor.execute("SELECT name FROM technicians")
-list_techs_dropdown = [r for r in cursor.fetchall() if r]
+list_techs_dropdown = [r[0] for r in cursor.fetchall() if r]
 
 # --- حساب وعرض الماليّات العامة للمعمل بالأعلى ---
 total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
 try:
     cursor.execute("SELECT SUM(price) FROM cases")
     res_sales = cursor.fetchone()
-    total_sales = float(res_sales) if res_sales and res_sales is not None else 0.0
+    total_sales = float(res_sales[0]) if res_sales and res_sales[0] is not None else 0.0
 
     cursor.execute("SELECT SUM(amount_paid) FROM payments")
     res_paid = cursor.fetchone()
-    total_paid = float(res_paid) if res_paid and res_paid is not None else 0.0
+    total_paid = float(res_paid[0]) if res_paid and res_paid[0] is not None else 0.0
 
     cursor.execute("SELECT SUM(tech_commission) FROM cases")
     res_tech = cursor.fetchone()
-    total_tech_commissions = float(res_tech) if res_tech and res_tech is not None else 0.0
+    total_tech_commissions = float(res_tech[0]) if res_tech and res_tech[0] is not None else 0.0
 except Exception:
     pass
 
@@ -91,16 +111,16 @@ if choice == "cases":
         elif patient:
             cursor.execute("SELECT custom_price FROM doctor_prices WHERE doctor_name=? AND product_name=?", (selected_doc, selected_type))
             price_match = cursor.fetchone()
-            if price_match and price_match is not None:
-                final_price = float(price_match)
+            if price_match and price_match[0] is not None:
+                final_price = float(price_match[0])
             else:
                 cursor.execute("SELECT general_price FROM products WHERE name=?", (selected_type,))
                 general_match = cursor.fetchone()
-                final_price = float(general_match) if general_match and general_match is not None else 0.0
+                final_price = float(general_match[0]) if general_match and general_match[0] is not None else 0.0
             
             cursor.execute("SELECT default_commission FROM technicians WHERE name=?", (selected_tech,))
             comm_match = cursor.fetchone()
-            suggested_comm = float(comm_match) if comm_match and comm_match is not None else 0.0
+            suggested_comm = float(comm_match[0]) if comm_match and comm_match[0] is not None else 0.0
             
             cursor.execute("INSERT INTO cases (doctor_name, patient_name, case_type, price, tech_name, tech_commission) VALUES (?, ?, ?, ?, ?, ?)",
                            (selected_doc, patient, selected_type, final_price, selected_tech, suggested_comm))
@@ -179,21 +199,3 @@ elif choice == "payments":
     st.subheader("💸 استلام وتعديل دفعات الأطباء النقدية")
     pay_doc = st.selectbox("اختر الطبيب المسدد", list_docs) if list_docs else st.text_input("اكتب اسم الطبيب المسدد يدوياً")
     amt = st.number_input("المبلغ المستلم نقداً أو تحويل (ج.م)", min_value=0.0, step=100.0)
-    if st.button("💾 تسجيل السند وتحديث الخزنة"):
-        if pay_doc and amt > 0:
-            cursor.execute("INSERT INTO payments (doctor_name, amount_paid) VALUES (?, ?)", (pay_doc, amt))
-            conn.commit()
-            st.success(f"✅ تم تسجيل دفعة بقيمة {amt:,.2f} ج.م للطبيب {pay_doc} بنجاح!")
-            st.rerun()
-        else:
-            st.error("يرجى التأكد من كتابة اسم الطبيب وإدخال مبلغ أكبر من صفر.")
-
-# 6. شاشة التقارير وتنزيل فواتير الـ PDF (تم ضبط المحاذاة والمسافات البرمجية بالكامل مئة بالمئة)
-elif choice == "reports":
-    st.subheader("📊 الفواتير وحالات المعمل الشاملة وطباعة الـ PDF")
-    cursor.execute("SELECT id, doctor_name, patient_name, case_type, price FROM cases ORDER BY id DESC")
-    all_cases_data = cursor.fetchall()
-    if all_cases_data:
-        unique_docs_filter = ["الكل"] + list_docs
-        selected_filter_doc = st.selectbox("🔍 تصفية الحالات باسم طبيب محدد:", unique_docs_filter)
-        for case in all_cases_data:
