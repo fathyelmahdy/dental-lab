@@ -113,15 +113,15 @@ if role in ["Admin", "Accountant"]:
     try:
         cursor.execute("SELECT SUM(price) FROM cases")
         res_sales = cursor.fetchone()
-        total_sales = float(res_sales[0]) if res_sales[0] else 0.0
+        total_sales = float(res_sales[0]) if res_sales and res_sales[0] is not None else 0.0
 
         cursor.execute("SELECT SUM(amount_paid) FROM payments")
         res_paid = cursor.fetchone()
-        total_paid = float(res_paid[0]) if res_paid[0] else 0.0
+        total_paid = float(res_paid[0]) if res_paid and res_paid[0] is not None else 0.0
 
         cursor.execute("SELECT SUM(tech_commission) FROM cases")
         res_tech = cursor.fetchone()
-        total_tech_commissions = float(res_tech[0]) if res_tech[0] else 0.0
+        total_tech_commissions = float(res_tech[0]) if res_tech and res_tech[0] is not None else 0.0
     except Exception:
         pass
     
@@ -224,4 +224,3 @@ if role in ["Admin", "Accountant"]:
                         except sqlite3.IntegrityError:
                             st.error("مضافة بالفعل!")
         else:
-            st.warning("🔒 تصفح فقط: تعديل الكتالوج والأسعار متاح فقط لصلاحية مدير المعمل (Admin)."
