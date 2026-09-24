@@ -106,22 +106,18 @@ if choice == "cases":
         selected_type = st.selectbox("نوع التركيبة", list(dict_products.keys()) if dict_products else ["لا يوجد تركيبات - اضغط على كتالوج الأسعار بالأعلى لإضافتها"])
         selected_tech = st.selectbox("الفني المسؤول عن الحالة", list(dict_techs.keys()) if dict_techs else ["لا يوجد فنيين - اضغط على حسابات الفنيين بالأعلى لإضافتهم"])
         
+        # يتم سحب الأسعار وعمولات الفني تلقائياً في الخلفية البرمجية دون إظهار خانات إدخال لتسريع الإدخال
         suggested_price = dict_products.get(selected_type, 0.0)
         suggested_comm = dict_techs.get(selected_tech, 0.0)
-        
-        st.info(f"💵 السعر الافتراضي: {suggested_price:,.2f} ج.م | 🛠️ عمولة الفني: {suggested_comm:,.2f} ج.م")
-        
-        final_price = st.number_input("تأكيد السعر النهائي (ج.م)", min_value=0.0, value=suggested_price)
-        final_comm = st.number_input("تأكيد عمولة الفني (ج.م)", min_value=0.0, value=suggested_comm)
         
         if st.form_submit_button("حفظ وتثبيت الحالة"):
             if not list_docs or not dict_products or not dict_techs:
                 st.error("⚠️ خطأ: لا يمكنك الحفظ قبل إضافة طبيب، تركيبة، وفني واحد على الأقل من القوائم بالأعلى!")
             elif patient:
                 cursor.execute("INSERT INTO cases (doctor_name, patient_name, case_type, price, tech_name, tech_commission) VALUES (?, ?, ?, ?, ?, ?)",
-                               (selected_doc, patient, selected_type, final_price, selected_tech, final_comm))
+                               (selected_doc, patient, selected_type, suggested_price, selected_tech, suggested_comm))
                 conn.commit()
-                st.success("✅ تم حفظ وفحص الطلب ماليًا بنجاح!")
+                st.success("✅ تم تسجيل الحالة وحفظ البيانات ماليًا بنجاح تلقائي!")
                 st.rerun()
             else:
                 st.error("يرجى كتابة اسم المريض")
@@ -211,4 +207,9 @@ elif choice == "reports":
             if selected_filter_doc != "الكل" and c_doc != selected_filter_doc:
                 continue
                 
-            # عرض البيانات بشكل نصي صافي ومبسط مئة بالمئة لمنع أي أخطاء مسافات
+            st.write(f"**كود:** {c_id} | **الطبيب:** {c_doc} | **المريض:** {c_pat} | **النوع:** {c_type} | **الحساب:** {c_price:,.2f} ج.م")
+            
+            def generate_invoice_pdf(case_id, doc, pat, ctype, price):
+                buffer = io.BytesIO()
+                p = canvas.Canvas(buffer, pagesize=letter)
+                p.setPageSize((6 * inch, 4 * inch))
