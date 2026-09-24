@@ -217,3 +217,10 @@ elif choice == "doctors":
                     cursor.execute("INSERT INTO doctors (name, phone) VALUES (?, ?)", (new_doc, phone_doc))
                     conn.commit()
                     st.success("🎉 تم تسجيل الطبيب بنجاح!")
+                    st.rerun()
+                except sqlite3.IntegrityError:
+                    st.error("هذا الطبيب مسجل مسبقاً!")
+            else:
+                st.error("يرجى كتابة اسم الطبيب")
+    df_docs = pd.read_sql_query("SELECT name as [اسم الطبيب], phone as [الهاتف] FROM doctors", conn)
+    st.dataframe(df_docs, use_container_width=True)
