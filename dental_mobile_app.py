@@ -9,7 +9,7 @@ from reportlab.lib.units import inch
 # إعداد الصفحة لتناسب شاشة الآيفون والموبايل والكمبيوتر
 st.set_page_config(page_title="معمل الأسنان المحترف", layout="centered", page_icon="🦷")
 
-# الاتصال بقاعدة بيانات جديدة كلياً وبكر لتخطي أي أقفال معلقة سابقاً
+# الاتصال بقاعدة البيانات بملف بكر ونظيف تماماً لتخطي أي قفل سحابي سابق
 conn = sqlite3.connect('dental_lab_final_system_2026.db', check_same_thread=False)
 cursor = conn.cursor()
 
@@ -27,28 +27,28 @@ st.write("الإصدار الاحترافي المستقر الشامل - مبي
 
 # جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً بنصوص صريحة ومسطحة
 cursor.execute("SELECT name FROM doctors")
-list_docs = [r for r in cursor.fetchall()]
+list_docs = [r[0] for r in cursor.fetchall()]
 
 cursor.execute("SELECT name FROM products")
-list_products = [r for r in cursor.fetchall()]
+list_products = [r[0] for r in cursor.fetchall()]
 
 cursor.execute("SELECT name FROM technicians")
-list_techs_dropdown = [r for r in cursor.fetchall()]
+list_techs_dropdown = [r[0] for r in cursor.fetchall()]
 
 # --- حساب وعرض الماليّات العامة للمعمل بالأعلى ---
 total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
 try:
     cursor.execute("SELECT SUM(price) FROM cases")
     res_sales = cursor.fetchone()
-    total_sales = float(res_sales) if res_sales and res_sales is not None else 0.0
+    total_sales = float(res_sales[0]) if res_sales and res_sales[0] is not None else 0.0
 
     cursor.execute("SELECT SUM(amount_paid) FROM payments")
     res_paid = cursor.fetchone()
-    total_paid = float(res_paid) if res_paid and res_paid is not None else 0.0
+    total_paid = float(res_paid[0]) if res_paid and res_paid[0] is not None else 0.0
 
     cursor.execute("SELECT SUM(tech_commission) FROM cases")
     res_tech = cursor.fetchone()
-    total_tech_commissions = float(res_tech) if res_tech and res_tech is not None else 0.0
+    total_tech_commissions = float(res_tech[0]) if res_tech and res_tech[0] is not None else 0.0
 except Exception:
     pass
 
@@ -89,16 +89,16 @@ if choice == "cases":
         elif patient:
             cursor.execute("SELECT custom_price FROM doctor_prices WHERE doctor_name=? AND product_name=?", (selected_doc, selected_type))
             price_match = cursor.fetchone()
-            if price_match and price_match is not None:
-                final_price = float(price_match)
+            if price_match and price_match[0] is not None:
+                final_price = float(price_match[0])
             else:
                 cursor.execute("SELECT general_price FROM products WHERE name=?", (selected_type,))
                 general_match = cursor.fetchone()
-                final_price = float(general_match) if general_match and general_match is not None else 0.0
+                final_price = float(general_match[0]) if general_match and general_match[0] is not None else 0.0
             
             cursor.execute("SELECT default_commission FROM technicians WHERE name=?", (selected_tech,))
             comm_match = cursor.fetchone()
-            suggested_comm = float(comm_match) if comm_match and comm_match is not None else 0.0
+            suggested_comm = float(comm_match[0]) if comm_match and comm_match[0] is not None else 0.0
             
             cursor.execute("INSERT INTO cases (doctor_name, patient_name, case_type, price, tech_name, tech_commission) VALUES (?, ?, ?, ?, ?, ?)",
                            (selected_doc, patient, selected_type, final_price, selected_tech, suggested_comm))
@@ -118,7 +118,7 @@ if choice == "cases":
         if st.button("❌ حذف هذه الحالة وتعديل الحسابات"):
             cursor.execute("DELETE FROM cases WHERE id=?", (int(case_to_delete),))
             conn.commit()
-            st.success("🎉 تم حذف الحالة بنجاح!")
+            st.success("🎉 تم حذف الحالة وتعديل الموازنة بنجاح!")
             st.rerun()
 
 # 2. شاشة دليل الأطباء
@@ -194,4 +194,3 @@ elif choice == "prices":
         st.markdown("### 🔄 2. تعديل السعر لطبيب معين (اختياري)")
         target_doc = st.selectbox("اختر الطبيب", list_docs if list_docs else ["لا يوجد أطباء"])
         target_prod = st.selectbox("اختر التركيبة", list_products if list_products else ["لا يوجد تركيبات"])
-        custom_rate = st.number_input("السعر المعدل الخاص بهذا الطبيب (ج.م)", min_value=0.0, step=50.0)
