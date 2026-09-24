@@ -6,14 +6,14 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
 
-# إعداد الصفحة لتناسب شاشة الآيفون والموبايل
+# إعداد الصفحة لتناسب شاشة الآيفون والموبايل بشكل عمودي متناسق
 st.set_page_config(page_title="معمل الأسنان المحترف", layout="centered", page_icon="🦷")
 
-# الاتصال بقاعدة البيانات
+# الاتصال بقاعدة البيانات المحلية
 conn = sqlite3.connect('dental_lab_advanced_mobile.db', check_same_thread=False)
 cursor = conn.cursor()
 
-# إنشاء وتحديث الجداول المترابطة
+# إنشاء وتحديث الجداول المترابطة (المستخدمين، الأطباء، المنتجات، الفنيين، الحالات، المقبوضات)
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, role TEXT
@@ -42,8 +42,8 @@ cursor.execute('''
     )''')
 conn.commit()
 
-# الترقية التلقائية لحساب المدير الأول
-cursor.execute("SELECT COUNT(*) FROM users")
+# زرع حساب المدير الافتراضي الأول أوتوماتيكياً (admin / 1234) إذا كان النظام فارغاً
+cursor.execute("SELECT COUNT(*) FROM users WHERE username='admin'")
 if cursor.fetchone()[0] == 0:
     cursor.execute("INSERT INTO users (username, password, role) VALUES ('admin', '1234', 'Admin')")
     conn.commit()
@@ -55,7 +55,7 @@ try:
 except sqlite3.OperationalError:
     pass
 
-# --- نظام تسجيل الدخول والصلاحيات ---
+# --- نظام تسجيل الدخول المتطور والصلاحيات ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['user_role'] = None
@@ -77,10 +77,10 @@ if not st.session_state['logged_in']:
             st.rerun()
         else:
             st.error("⚠️ اسم المستخدم أو كلمة المرور غير صحيحة!")
-    st.info("💡 حساب المدير الافتراضي: admin | الباسورد: 1234")
+    st.info("💡 حساب المدير الافتراضي الحالي للدخول: اسم المستخدم: admin | الباسورد: 1234")
     st.stop()
 
-# زر تسجيل الخروج والبيانات الجانبية
+# شريط جانبي لعرض معلومات المستخدم وزر تسجيل الخروج
 if st.sidebar.button("🚪 تسجيل الخروج"):
     st.session_state['logged_in'] = False
     st.session_state['user_role'] = None
@@ -92,7 +92,7 @@ st.sidebar.markdown(f"**🛡️ الصلاحية:** {st.session_state['user_role
 
 st.title("🦷 نظام معمل الأسنان الذكي")
 
-# جلب قوائم البيانات المشتركة للفورمات
+# جلب قوائم البيانات لملء الخيارات المنسدلة تلقائياً
 cursor.execute("SELECT name FROM doctors")
 list_docs = [r[0] for r in cursor.fetchall()]
 
@@ -105,7 +105,7 @@ dict_techs = {r[0]: r[1] for r in cursor.fetchall()}
 role = st.session_state['user_role']
 
 if role in ["Admin", "Accountant"]:
-    # حساب وعرض الماليات للمدير والمحاسب فقط
+    # حساب وعرض الماليّات العامة للمدير والمحاسب فقط
     total_sales, total_paid, total_tech_commissions = 0.0, 0.0, 0.0
     try:
         cursor.execute("SELECT SUM(price) FROM cases")
@@ -130,16 +130,16 @@ if role in ["Admin", "Accountant"]:
     col3.metric("🛠️ عمولات الفنيين", f"{total_tech_commissions:,.2f} ج.م")
     st.markdown("---")
 
-    # بناء التبويبات الموحدة في سطر واحد
+    # تهيئة التبويبات والأيقونات العلوية بناءً على الصلاحيات
     if role == "Admin":
-        t1, t2, t3, t4, t5, t6, t7 = st.tabs(["📋 الحالات", "👨‍⚕️ الأطباء", "🧑‍🏭 الفنيين", "⚙️ الأسعار", "💸 المقبوضات", "📊 التقارير", "🔐 المستخدمين"])
+        t1, t2, t3, t4, t5, t6, t7 = st.tabs(["📋 الحالات", "👨‍⚕️ الأطباء", "🧑‍🏭 الفنيين", "⚙️ الأسعار", "💸 المقبوضات", "📊 التقارير", "🔐 إدارة المستخدمين"])
     else:
         t1, t2, t3, t4, t5, t6 = st.tabs(["📋 الحالات", "👨‍⚕️ الأطباء", "🧑‍🏭 الفنيين", "⚙️ الأسعار", "💸 المقبوضات", "📊 التقارير"])
         
     with t1:
         st.subheader("تسجيل حالة جديدة وتحديد الفني")
         if not list_docs or not dict_products or not dict_techs:
-            st.warning("⚠️ يرجى التأكد من تهيئة الأطباء، التركيبات، والفنيين أولاً.")
+            st.warning("⚠️ يرجى التأكد من إضافة أطباء، تركيبات، وفنيين أولاً لتفعيل شاشة الحالات.")
         else:
             with st.form("case_form_admin", clear_on_submit=True):
                 selected_doc = st.selectbox("اختر الطبيب", list_docs)
@@ -213,7 +213,3 @@ if role in ["Admin", "Accountant"]:
                             conn.commit()
                             st.success("✅ تم التحديث الافتراضي بقائمة الأسعار!")
                             st.rerun()
-                        except sqlite3.IntegrityError:
-                            st.error("مضافة بالفعل!")
-        else:
-            st.warning("🔒 تصفح فقط: تعديل الكتالوج متاح لمدير المعمل (Admin).")
