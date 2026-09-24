@@ -73,7 +73,7 @@ if not st.session_state['logged_in']:
         
         if user_match:
             st.session_state['logged_in'] = True
-            st.session_state['user_role'] = user_match[0]
+            st.session_state['user_role'] = str(user_match[0]).strip() # استخراج النص الصريح للصلاحية
             st.session_state['username'] = username_input
             st.success("تم التحقق بنجاح! جاري تحميل النظام...")
             st.rerun()
@@ -221,4 +221,3 @@ if role in ["Admin", "Accountant"]:
                             st.success("✅ تم التحديث الافتراضي بقائمة الأسعار!")
                             st.rerun()
                         except sqlite3.IntegrityError:
-                            st.error("مضافة بالفعل!")
